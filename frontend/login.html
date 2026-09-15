@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POLI - Iniciar Sesión</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Custom CSS variables from main app -->
+    <link rel="stylesheet" href="css/styles.css">
+
+    <style>
+        body {
+            background-color: var(--bg-sidebar); /* Dark blue background */
+            background-image: radial-gradient(circle at top right, rgba(0, 82, 255, 0.15), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(1, 181, 116, 0.1), transparent 40%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .login-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 420px;
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: 0px 24px 50px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .login-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .login-logo .logo-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            font-size: 28px;
+        }
+
+        .login-logo h1 {
+            color: var(--text-main);
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 18px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            font-size: 15px;
+            border-radius: var(--radius-md);
+            margin-top: 10px;
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 16px;
+            display: none;
+            background-color: #FEF2F2;
+            padding: 10px;
+            border-radius: var(--radius-md);
+            border: 1px solid #FECACA;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-logo" style="flex-direction: column;">
+            <img src="Logo POLI de rutas inteligentes.png" alt="POLI Logo" style="height: 64px; object-fit: contain;">
+        </div>
+        
+        <p class="login-subtitle">Ingresa tus credenciales para acceder a la plataforma</p>
+
+        <form id="login-form">
+            <div class="input-group">
+                <label for="username">Usuario</label>
+                <div class="input-wrapper">
+                    <i class="ph-fill ph-user"></i>
+                    <input type="text" id="username" placeholder="Ingresa 'admin'" required autocomplete="username">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Contraseña</label>
+                <div class="input-wrapper">
+                    <i class="ph-fill ph-lock-key"></i>
+                    <input type="password" id="password" placeholder="Ingresa 'admin'" required autocomplete="current-password">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-login">
+                Iniciar Sesión <i class="ph-bold ph-arrow-right"></i>
+            </button>
+
+            <div class="error-message" id="error-message">
+                <i class="ph-fill ph-warning-circle"></i> Usuario o contraseña incorrectos.
+            </div>
+        </form>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Prevent normal form submission
+            
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            const errorMsg = document.getElementById('error-message');
+            const btn = document.querySelector('.btn-login');
+            
+            try {
+                // UI state: loading
+                btn.innerHTML = '<i class="ph-bold ph-spinner ph-spin"></i> Ingresando...';
+                btn.disabled = true;
+                errorMsg.style.display = 'none';
+
+                // Call API
+                const response = await window.API.login(user, pass);
+                
+                // Save Token
+                localStorage.setItem('poli_jwt', response.token);
+                localStorage.setItem('poli_role', response.role);
+                localStorage.setItem('poli_user', response.username);
+
+                // Success UI
+                btn.style.backgroundColor = 'var(--success)';
+                btn.style.boxShadow = '0 4px 12px rgba(1, 181, 116, 0.3)';
+                
+                setTimeout(() => {
+                    // Redirect to the main dashboard
+                    window.location.href = 'index.html';
+                }, 800);
+
+            } catch (error) {
+                // Show error
+                errorMsg.style.display = 'block';
+                errorMsg.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Usuario o contraseña incorrectos.';
+                btn.innerHTML = 'Iniciar Sesión <i class="ph-bold ph-arrow-right"></i>';
+                btn.disabled = false;
+                
+                // Shake animation for the form
+                const container = document.querySelector('.login-container');
+                container.style.transform = 'translateX(10px)';
+                setTimeout(() => container.style.transform = 'translateX(-10px)', 100);
+                setTimeout(() => container.style.transform = 'translateX(10px)', 200);
+                setTimeout(() => container.style.transform = 'translateX(0)', 300);
+            }
+        });
+    </script>
+</body>
+</html>

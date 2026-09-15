@@ -1,0 +1,13 @@
+name = "poli-worker"
+main = "../backend/index.js"
+compatibility_date = "2024-03-20"
+
+# Habilitamos node_compat para usar módulos nativos de nodejs si Hono lo requiere
+node_compat = true
+
+# Bind de la Base de Datos D1
+[[d1_databases]]
+binding = "DB" # Dentro del código se accede como env.DB
+database_name = "poli-db"
+database_id = "00000000-0000-0000-0000-000000000000" # Se debe actualizar al crear en producción
+migrations_dir = "../db/migrations"
