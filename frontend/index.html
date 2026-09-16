@@ -41,22 +41,22 @@
                 </a>
                 <a href="#" class="nav-item" data-view="flota" id="nav-flota" style="display: none;">
                     <i class="ph-fill ph-truck"></i>
-                    <span>Flota</span>
+                    <span>Camiones</span>
+                </a>
+                <a href="#" class="nav-item" data-view="vehiculos" id="nav-vehiculos" style="display: none;">
+                    <i class="ph ph-car"></i>
+                    <span>Vehículos</span>
                 </a>
                 <a href="#" class="nav-item" data-view="despachador" id="nav-despachador" style="display: none;">
                     <i class="ph-fill ph-device-mobile"></i>
                     <span>Mis Entregas</span>
                 </a>
-                <a href="#" class="nav-item">
-                    <i class="ph ph-car"></i>
-                    <span>Vehículos</span>
-                </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" data-view="alertas" id="nav-alertas">
                     <i class="ph ph-bell"></i>
                     <span>Alertas</span>
-                    <span class="badge badge-danger">12</span>
+                    <span class="badge badge-danger" id="sidebar-alert-badge">0</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" data-view="reportes" id="nav-reportes">
                     <i class="ph ph-chart-bar"></i>
                     <span>Reportes</span>
                 </a>
@@ -89,9 +89,12 @@
         <main class="main-wrapper">
             <!-- Header -->
             <header class="top-header">
-                <div class="header-left" id="header-title-container">
-                    <h2 class="page-title">Panel de control</h2>
-                    <p class="page-subtitle">Resumen de la operación logística</p>
+                <div class="header-left" id="header-title-container" style="display:flex; align-items:center; gap:16px;">
+                    <i class="ph ph-list" id="sidebar-toggle" style="font-size: 28px; cursor: pointer; color: var(--text-main);"></i>
+                    <div>
+                        <h2 class="page-title">Panel de control</h2>
+                        <p class="page-subtitle">Resumen de la operación logística</p>
+                    </div>
                 </div>
                 
                 <div class="header-right">
@@ -102,11 +105,11 @@
                     
                     <div class="header-widget">
                         <i class="ph ph-calendar-blank"></i>
-                        <span>Lunes, 6 de julio de 2026</span>
+                        <span id="date-widget">Lunes, 6 de julio de 2026</span>
                     </div>
                     <div class="header-widget">
-                        <i class="ph ph-sun"></i>
-                        <span>10:24</span>
+                        <i class="ph ph-clock"></i>
+                        <span id="time-widget">10:24:00</span>
                     </div>
                     
                     <button class="btn btn-primary" id="header-action-btn" style="display: none;">
@@ -132,6 +135,9 @@
     <script src="js/views/operacion.js"></script>
     <script src="js/views/rutas.js"></script>
     <script src="js/views/flota.js"></script>
+    <script src="js/views/vehiculos.js"></script>
+    <script src="js/views/alertas.js"></script>
+    <script src="js/views/reportes.js"></script>
     <script src="js/views/despachador.js"></script>
     <script src="js/app.js"></script>
 </body>

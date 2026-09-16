@@ -73,6 +73,12 @@ body {
     z-index: 10;
 }
 
+.sidebar.collapsed {
+    width: 0 !important;
+    overflow: hidden;
+    opacity: 0;
+}
+
 .sidebar-header {
     padding: 30px 24px;
     display: flex;
@@ -348,7 +354,7 @@ body {
 /* Grid Layouts for Views - Optimized for PC Screens */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--content-padding);
     margin-bottom: var(--content-padding);
 }
@@ -580,6 +586,8 @@ body {
 .table-container {
     width: 100%;
     overflow-x: auto;
+    max-height: 350px;
+    overflow-y: auto;
 }
 table {
     width: 100%;

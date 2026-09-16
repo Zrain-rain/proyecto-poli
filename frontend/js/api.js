@@ -70,5 +70,8 @@ window.API = {
             method: 'PUT',
             body: JSON.stringify({ estado })
         });
+    },
+    getAlertas: async () => {
+        return await fetchAPI('/data/alertas');
     }
 };

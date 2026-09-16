@@ -41,15 +41,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerActionBtn = document.getElementById('header-action-btn');
     const searchBar = document.getElementById('global-search');
 
+    // Sidebar Toggle
+    const sidebar = document.querySelector('.sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    if (sidebar && toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+        });
+    }
+
+    // Real-time Clock
+    const dateWidget = document.getElementById('date-widget');
+    const timeWidget = document.getElementById('time-widget');
+    if (dateWidget && timeWidget) {
+        const updateClock = () => {
+            const now = new Date();
+            dateWidget.textContent = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            timeWidget.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        };
+        updateClock();
+        setInterval(updateClock, 1000);
+    }
+
     // Role-based UI logic
     const navInicio = document.querySelector('.nav-item[data-view="inicio"]');
     const navOperacion = document.querySelector('.nav-item[data-view="operacion"]');
     const navRutas = document.querySelector('.nav-item[data-view="rutas"]');
     const navFlota = document.getElementById('nav-flota');
+    const navVehiculos = document.getElementById('nav-vehiculos');
     const navDespachador = document.getElementById('nav-despachador');
 
     if (userRole === 'admin') {
         if (navFlota) navFlota.style.display = 'flex';
+        if (navVehiculos) navVehiculos.style.display = 'flex';
     }
     
     if (userRole === 'despachador') {
@@ -57,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navOperacion) navOperacion.style.display = 'none';
         if (navRutas) navRutas.style.display = 'none';
         if (navFlota) navFlota.style.display = 'none';
+        if (navVehiculos) navVehiculos.style.display = 'none';
         if (navDespachador) navDespachador.style.display = 'flex';
         // Hide sidebar header text except for mobile
         document.querySelector('.sidebar').style.width = '100%';
@@ -93,12 +118,36 @@ document.addEventListener('DOMContentLoaded', () => {
             showSearch: true
         },
         'flota': {
-            title: 'Gestión de Flota',
-            subtitle: 'Control de camiones y choferes',
+            title: 'Gestión de Camiones',
+            subtitle: 'Control de camiones pesados',
             render: renderFlota,
             init: initFlota,
             showActionBtn: false,
             showSearch: true
+        },
+        'vehiculos': {
+            title: 'Gestión de Vehículos',
+            subtitle: 'Control de vehículos livianos',
+            render: typeof renderVehiculos !== 'undefined' ? renderVehiculos : () => '<div style="padding: 24px;">Módulo en construcción</div>',
+            init: typeof initVehiculos !== 'undefined' ? initVehiculos : () => {},
+            showActionBtn: false,
+            showSearch: true
+        },
+        'alertas': {
+            title: 'Historial de Alertas',
+            subtitle: 'Registro de incidentes y retrasos',
+            render: typeof renderAlertas !== 'undefined' ? renderAlertas : () => '<div style="padding: 24px;">Módulo en construcción</div>',
+            init: typeof initAlertas !== 'undefined' ? initAlertas : () => {},
+            showActionBtn: false,
+            showSearch: false
+        },
+        'reportes': {
+            title: 'Reportes y Análisis',
+            subtitle: 'Rendimiento general de la operación',
+            render: typeof renderReportes !== 'undefined' ? renderReportes : () => '<div style="padding: 24px;">Módulo en construcción</div>',
+            init: typeof initReportes !== 'undefined' ? initReportes : () => {},
+            showActionBtn: false,
+            showSearch: false
         },
         'despachador': {
             title: 'Despachador',

@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS vehicles (
   id TEXT PRIMARY KEY,
   patente TEXT NOT NULL,
-  estado TEXT DEFAULT 'Disponible'
+  estado TEXT DEFAULT 'Disponible',
+  tipo TEXT DEFAULT 'Camión'
 );
 
 -- Conductores
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS orders (
   route_id TEXT,
   estado TEXT DEFAULT 'Pendiente',
   avance INTEGER DEFAULT 0,
+  fecha DATE DEFAULT CURRENT_DATE,
   FOREIGN KEY (route_id) REFERENCES routes(id)
 );
 

@@ -93,6 +93,8 @@ const initInicio = async () => {
         return `<span class="kpi-trend ${colorClass}"><i class="ph-bold ${icon}"></i> ${tendencia} ${textoTendencia}</span>`;
     };
 
+    let operacionesDelDia = [];
+
     // 1. Cargar KPIs desde API
     try {
         const kpis = await window.API.getKPIs();
@@ -106,7 +108,7 @@ const initInicio = async () => {
                             <span class="kpi-value">${kpis.entregasDiarias?.valor || 0}</span>
                             ${renderTrend(kpis.entregasDiarias?.tendencia || '0%', kpis.entregasDiarias?.tendenciaPositiva, kpis.entregasDiarias?.textoTendencia || '')}
                         </div>
-                        <div class="kpi-label">Entregas diarias</div>
+                        <div class="kpi-label">Entregas de hoy</div>
                     </div>
                 </div>
                 <div class="card kpi-card">
@@ -125,9 +127,9 @@ const initInicio = async () => {
                     <div class="kpi-content">
                         <div class="kpi-value-row">
                             <span class="kpi-value">${kpis.vehiculos?.valor || 0}</span>
-                            ${renderTrend(kpis.vehiculos?.tendencia || '0', kpis.vehiculos?.tendenciaPositiva, '')}
+                            ${renderTrend(kpis.vehiculos?.tendencia || '0', kpis.vehiculos?.tendenciaPositiva, kpis.vehiculos?.textoTendencia || '')}
                         </div>
-                        <div class="kpi-label">Vehículos</div>
+                        <div class="kpi-label">Vehículos y Camiones</div>
                     </div>
                 </div>
                 <div class="card kpi-card">
@@ -135,7 +137,7 @@ const initInicio = async () => {
                     <div class="kpi-content">
                         <div class="kpi-value-row">
                             <span class="kpi-value">${kpis.alertasActivas?.valor || 0}</span>
-                            ${renderTrend(kpis.alertasActivas?.tendencia || '0', kpis.alertasActivas?.tendenciaPositiva, '')}
+                            ${renderTrend(kpis.alertasActivas?.tendencia || '0', kpis.alertasActivas?.tendenciaPositiva, kpis.alertasActivas?.textoTendencia || '')}
                         </div>
                         <div class="kpi-label">Alertas activas</div>
                     </div>
@@ -149,12 +151,13 @@ const initInicio = async () => {
     // 2. Cargar Operaciones
     try {
         const operaciones = await window.API.getOperaciones();
+        operacionesDelDia = operaciones; // Guardamos para el mapa
         const tbody = document.getElementById('inicio-table-body');
         if (tbody && operaciones) {
             tbody.innerHTML = operaciones.slice(0, 5).map(op => {
                 let statusClass = 'ontime';
                 if(op.estado === 'En riesgo') statusClass = 'risk';
-                if(op.estado === 'Con retraso') statusClass = 'delayed';
+                if(op.estado === 'Con retraso' || op.estado === 'Retrasada') statusClass = 'delayed';
 
                 return `
                     <tr>
@@ -170,17 +173,24 @@ const initInicio = async () => {
         console.error("Error al cargar operaciones", e);
     }
 
-    // 3. Init Chart.js (Estático por ahora, solo para visualización)
+    // 3. Init Chart.js (Dinámico basado en operaciones)
     const ctx = document.getElementById('entregasChart');
-    if (ctx) {
+    if (ctx && operacionesDelDia.length > 0) {
+        // Agrupar por ventana horaria
+        const ventanasSet = new Set(operacionesDelDia.map(op => op.ventana || op.ventana_horaria).filter(Boolean));
+        const labels = Array.from(ventanasSet).sort();
+        
+        const dataProgramadas = labels.map(v => operacionesDelDia.filter(op => (op.ventana === v || op.ventana_horaria === v)).length);
+        const dataCompletadas = labels.map(v => operacionesDelDia.filter(op => (op.ventana === v || op.ventana_horaria === v) && (op.estado === 'Entregada' || op.estado === 'A tiempo')).length);
+
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
+                labels: labels,
                 datasets: [
                     {
                         label: 'Entregas',
-                        data: [12, 19, 15, 22, 30, 25, 18, 10],
+                        data: dataProgramadas,
                         backgroundColor: '#0052FF',
                         borderRadius: 4,
                         barPercentage: 0.6,
@@ -188,7 +198,7 @@ const initInicio = async () => {
                     },
                     {
                         label: 'Completadas',
-                        data: [10, 15, 12, 20, 25, 20, 15, 5],
+                        data: dataCompletadas,
                         backgroundColor: '#00B5D8',
                         borderRadius: 4,
                         barPercentage: 0.6,
@@ -201,29 +211,87 @@ const initInicio = async () => {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#E2E8F0', drawBorder: false } },
+                    y: { beginAtZero: true, grid: { color: '#E2E8F0', drawBorder: false }, ticks: { stepSize: 1 } },
                     x: { grid: { display: false, drawBorder: false } }
                 }
             }
         });
     }
 
-    // 4. Init Google Maps
+    // 4. Init Google Maps con Rutas
     const mapEl = document.getElementById('inicio-map');
     if (mapEl) {
         window.API.getConfig().then(config => {
             if(!config.mapsApiKey) return;
             
             window.initGoogleMap = () => {
+                const baseLocation = "Camino las flores 1008, Lampa, Chile";
+                const baseLatLng = { lat: -33.284, lng: -70.875 }; // Lampa aprox
                 const map = new google.maps.Map(mapEl, {
-                    center: { lat: -33.4489, lng: -70.6693 },
-                    zoom: 11,
-                    disableDefaultUI: true,
-                    zoomControl: true
+                    center: baseLatLng,
+                    zoom: 10,
+                    disableDefaultUI: false, // Mostrar UI para zoom
+                    zoomControl: true,
+                    mapTypeControl: false,
+                    streetViewControl: false
                 });
 
                 const trafficLayer = new google.maps.TrafficLayer();
                 trafficLayer.setMap(map);
+
+                const bounds = new google.maps.LatLngBounds();
+                
+                // Marcador permanente de la Base
+                const baseMarker = new google.maps.Marker({
+                    position: baseLatLng,
+                    map: map,
+                    title: "Centro de Distribución - Lampa",
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#0052FF',
+                        fillOpacity: 1,
+                        strokeWeight: 2,
+                        strokeColor: '#FFF',
+                        scale: 10
+                    }
+                });
+                bounds.extend(baseMarker.getPosition());
+
+                const directionsService = new google.maps.DirectionsService();
+                
+                // Extraer destinos únicos de hoy para trazar rutas
+                const destinos = operacionesDelDia.slice(0, 3).map(op => op.destino);
+                
+                destinos.forEach((destino, index) => {
+                    const directionsRenderer = new google.maps.DirectionsRenderer({
+                        map: map,
+                        suppressMarkers: false,
+                        polylineOptions: {
+                            strokeColor: index === 0 ? '#0052FF' : (index === 1 ? '#01B574' : '#00B5D8'),
+                            strokeWeight: 4,
+                            strokeOpacity: 0.8
+                        }
+                    });
+
+                    directionsService.route({
+                        origin: baseLocation,
+                        destination: destino,
+                        travelMode: google.maps.TravelMode.DRIVING
+                    }, (response, status) => {
+                        if (status === 'OK') {
+                            directionsRenderer.setDirections(response);
+                            
+                            // Ajustar los límites (zoom) del mapa incluyendo esta nueva ruta
+                            const route = response.routes[0];
+                            if (route && route.legs && route.legs[0]) {
+                                bounds.extend(route.legs[0].end_location);
+                                map.fitBounds(bounds);
+                            }
+                        } else {
+                            console.error('Fallo al cargar ruta hacia ' + destino + ':', status);
+                        }
+                    });
+                });
             };
 
             if (typeof google === 'undefined' || typeof google.maps === 'undefined') {

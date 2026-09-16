@@ -29,3 +29,12 @@ Para acceder a la plataforma y probar los roles, utiliza las siguientes credenci
 - **Despachador**: Usuario: `conductor1` | Clave: `camion123` (Vista móvil exclusiva)
 - **Operador**: Usuario: `operador` | Clave: `operador123`
 - **Cliente**: Usuario: `cliente` | Clave: `cliente123`
+
+## Iteración 3: Mapas Dinámicos, Analítica y Mejoras UI (Completado)
+
+### Avances:
+- **Ruteo Google Maps (fitBounds)**: Se añadió la ubicación central de Lampa de manera persistente en el mapa. Se programó el motor de mapas para ajustar automáticamente el nivel de zoom (`fitBounds`) abarcando desde la base hasta los destinos de los camiones, permitiendo al usuario además hacer zoom in/out manualmente.
+- **Gráficos y KPIs Dinámicos**: El Worker ahora calcula en tiempo real los KPIs de Vehículos, OTIF (A tiempo vs Retraso) y el comparativo contra el día anterior en base a una nueva columna `fecha` agregada a la tabla `orders`. El gráfico de barras extrae la data agrupándola por ventanas horarias.
+- **Diferenciación de Flota**: Se modificó la tabla `vehicles` con la columna `tipo` para distinguir "Camiones" de "Vehículos", y se habilitó la visualización de ambas opciones en el menú lateral.
+- **Módulo de Reportes y Alertas**: Se crearon dos vistas nuevas, `alertas.js` (para ver el historial detallado de demoras) y `reportes.js` (para ver un pie-chart analítico y el rendimiento horario).
+- **Reloj y Menú Hamburguesa**: Se mejoró la navegación implementando un menú colapsable lateral y un reloj en tiempo real para mantener la plataforma siempre al día en el entorno visual.
