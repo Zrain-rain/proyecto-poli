@@ -126,4 +126,37 @@ app.post('/api/v1/data/operaciones', requireRole(['admin', 'user']), async (c) =
   return c.json({ message: 'Operación creada', data: body }, 201)
 })
 
+// ==========================================
+// NUEVOS ENDPOINTS: FLOTA Y DESPACHADOR
+// ==========================================
+
+// Obtener Flota (Admin, Operador)
+app.get('/api/v1/data/flota', requireRole(['admin', 'user']), async (c) => {
+  const query = `
+    SELECT v.id, v.patente, v.estado, d.nombre as conductor
+    FROM vehicles v
+    LEFT JOIN routes r ON v.id = r.vehicle_id
+    LEFT JOIN drivers d ON r.driver_id = d.id
+    GROUP BY v.id
+  `
+  const { results } = await c.env.DB.prepare(query).all()
+  return c.json(results)
+})
+
+// Actualizar estado de vehículo (Admin)
+app.put('/api/v1/data/flota/:id/estado', requireRole(['admin']), async (c) => {
+  const id = c.req.param('id')
+  const { estado } = await c.req.json()
+  const result = await c.env.DB.prepare('UPDATE vehicles SET estado = ? WHERE id = ?').bind(estado, id).run()
+  return c.json({ success: true, message: 'Estado actualizado' })
+})
+
+// Actualizar estado de operación (Despachador)
+app.put('/api/v1/data/operaciones/:id/estado', requireRole(['admin', 'despachador']), async (c) => {
+  const id = c.req.param('id')
+  const { estado } = await c.req.json()
+  const result = await c.env.DB.prepare('UPDATE orders SET estado = ? WHERE id = ?').bind(estado, id).run()
+  return c.json({ success: true, message: 'Estado de operación actualizado' })
+})
+
 export default app

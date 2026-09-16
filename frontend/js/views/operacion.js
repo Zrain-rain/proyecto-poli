@@ -185,36 +185,41 @@ const renderOperacion = () => {
     `;
 };
 
-const initOperacion = () => {
-    const tbody = document.getElementById('operaciones-table-body');
-    if (tbody) {
-        tbody.innerHTML = mockData.operaciones.map(op => {
-            let statusClass = 'ontime';
-            let barColor = 'green';
-            if(op.estado === 'En riesgo') { statusClass = 'risk'; barColor = 'blue'; }
-            if(op.estado === 'Retrasada') { statusClass = 'delayed'; barColor = 'blue'; }
-            if(op.estado === 'Entregada') { barColor = 'green'; }
+const initOperacion = async () => {
+    try {
+        const operaciones = await window.API.getOperaciones();
+        const tbody = document.getElementById('operaciones-table-body');
+        if (tbody && operaciones) {
+            tbody.innerHTML = operaciones.map(op => {
+                let statusClass = 'ontime';
+                let barColor = 'green';
+                if(op.estado === 'En riesgo') { statusClass = 'risk'; barColor = 'blue'; }
+                if(op.estado === 'Con retraso') { statusClass = 'delayed'; barColor = 'blue'; }
+                if(op.estado === 'Entregado') { barColor = 'green'; statusClass = 'ontime'; }
 
-            return `
-                <tr>
-                    <td style="color: var(--primary); font-weight: 600;">${op.id}</td>
-                    <td>${op.pedido}</td>
-                    <td>${op.destino}</td>
-                    <td>${op.ventana}</td>
-                    <td>${op.vehiculo}</td>
-                    <td>${op.conductor}</td>
-                    <td><span class="status-badge ${statusClass}">${op.estado}</span></td>
-                    <td>
-                        <div class="progress-cell">
-                            <span style="width: 35px; font-size: 12px; font-weight: 600;">${op.avance}%</span>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill ${barColor}" style="width: ${op.avance}%;"></div>
+                return `
+                    <tr>
+                        <td style="color: var(--primary); font-weight: 600;">${op.id}</td>
+                        <td>${op.pedido}</td>
+                        <td>${op.destino}</td>
+                        <td>${op.ventana}</td>
+                        <td>${op.vehiculo || 'No asignado'}</td>
+                        <td>${op.conductor || 'Sin conductor'}</td>
+                        <td><span class="status-badge ${statusClass}">${op.estado}</span></td>
+                        <td>
+                            <div class="progress-cell">
+                                <span style="width: 35px; font-size: 12px; font-weight: 600;">${op.avance}%</span>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill ${barColor}" style="width: ${op.avance}%;"></div>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                    <td style="color: var(--text-muted); cursor: pointer; text-align: center;"><i class="ph-bold ph-dots-three"></i></td>
-                </tr>
-            `;
-        }).join('');
+                        </td>
+                        <td style="color: var(--text-muted); cursor: pointer; text-align: center;"><i class="ph-bold ph-dots-three"></i></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        console.error("Error cargando operaciones:", e);
     }
 };

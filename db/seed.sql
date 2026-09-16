@@ -7,16 +7,18 @@ DELETE FROM users;
 DELETE FROM roles;
 DELETE FROM kpis;
 
--- Roles (admin, user, visualizer)
+-- Roles (admin, user, visualizer, despachador)
 INSERT INTO roles (id, role_name) VALUES (1, 'admin');
 INSERT INTO roles (id, role_name) VALUES (2, 'user');
 INSERT INTO roles (id, role_name) VALUES (3, 'visualizer');
+INSERT INTO roles (id, role_name) VALUES (4, 'despachador');
 
 -- Usuarios (Contraseñas estáticas "123456" hasheadas si usáramos bcrypt real, aquí por simplicidad se validará como string en JWT demo, o se pondrá un hash real en JS)
 -- Aquí por seguridad usaremos un texto plano en db para el ejemplo simple o un hash si es necesario.
 INSERT INTO users (username, password_hash, role_id) VALUES ('admin', 'admin123', 1);
 INSERT INTO users (username, password_hash, role_id) VALUES ('operador', 'operador123', 2);
 INSERT INTO users (username, password_hash, role_id) VALUES ('cliente', 'cliente123', 3);
+INSERT INTO users (username, password_hash, role_id) VALUES ('conductor1', 'camion123', 4);
 
 -- Vehículos
 INSERT INTO vehicles (id, patente, estado) VALUES ('V-101', 'AB-CD-12', 'Activo');

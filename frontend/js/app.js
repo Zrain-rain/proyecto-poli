@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Auth Guard
     const token = localStorage.getItem('poli_jwt');
+    const userRole = localStorage.getItem('poli_role');
+    
     if (!token) {
         window.location.href = 'login.html';
         return;
@@ -39,6 +41,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerActionBtn = document.getElementById('header-action-btn');
     const searchBar = document.getElementById('global-search');
 
+    // Role-based UI logic
+    const navInicio = document.querySelector('.nav-item[data-view="inicio"]');
+    const navOperacion = document.querySelector('.nav-item[data-view="operacion"]');
+    const navRutas = document.querySelector('.nav-item[data-view="rutas"]');
+    const navFlota = document.getElementById('nav-flota');
+    const navDespachador = document.getElementById('nav-despachador');
+
+    if (userRole === 'admin') {
+        if (navFlota) navFlota.style.display = 'flex';
+    }
+    
+    if (userRole === 'despachador') {
+        if (navInicio) navInicio.style.display = 'none';
+        if (navOperacion) navOperacion.style.display = 'none';
+        if (navRutas) navRutas.style.display = 'none';
+        if (navFlota) navFlota.style.display = 'none';
+        if (navDespachador) navDespachador.style.display = 'flex';
+        // Hide sidebar header text except for mobile
+        document.querySelector('.sidebar').style.width = '100%';
+        document.querySelector('.main-content').style.marginLeft = '0';
+        document.querySelector('.sidebar').style.display = 'none'; // Maybe hide sidebar completely for despachador if they just see the mobile view
+    }
+
     // View configurations
     const views = {
         'inicio': {
@@ -66,6 +91,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showActionBtn: true,
             actionText: 'Crear ruta',
             showSearch: true
+        },
+        'flota': {
+            title: 'Gestión de Flota',
+            subtitle: 'Control de camiones y choferes',
+            render: renderFlota,
+            init: initFlota,
+            showActionBtn: false,
+            showSearch: true
+        },
+        'despachador': {
+            title: 'Despachador',
+            subtitle: 'Mis rutas y entregas',
+            render: renderDespachador,
+            init: initDespachador,
+            showActionBtn: false,
+            showSearch: false
         }
     };
 
@@ -121,6 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose navigate globally for inline links
     window.navigate = navigate;
 
-    // Load initial view
-    navigate('inicio');
+    // Load initial view based on role
+    if (userRole === 'despachador') {
+        navigate('despachador');
+    } else {
+        navigate('inicio');
+    }
 });

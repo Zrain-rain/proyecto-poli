@@ -1,61 +1,10 @@
 // js/views/inicio.js
 
 const renderInicio = () => {
-    const kpis = mockData.kpisInicio;
-
-    const renderTrend = (kpi) => {
-        const icon = kpi.tendenciaPositiva ? 'ph-caret-up' : 'ph-caret-down';
-        const colorClass = kpi.tendenciaPositiva ? 'positive' : 'negative';
-        return `<span class="kpi-trend ${colorClass}"><i class="ph-bold ${icon}"></i> ${kpi.tendencia} ${kpi.textoTendencia}</span>`;
-    };
-
     return `
-        <div class="dashboard-grid">
-            <!-- KPIs -->
-            <div class="card kpi-card">
-                <div class="kpi-icon blue"><i class="ph-fill ph-cube"></i></div>
-                <div class="kpi-content">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value editable-kpi" data-kpi="entregasDiarias">${kpis.entregasDiarias.valor}</span>
-                        ${renderTrend(kpis.entregasDiarias)}
-                    </div>
-                    <div class="kpi-label">Entregas diarias</div>
-                </div>
-            </div>
-            
-            <div class="card kpi-card" style="cursor: pointer;" title="Haz clic para modificar el OTIF" onclick="const p = prompt('Ingresa el nuevo % de OTIF (ej: 85):', '${kpis.otif.porcentaje}'); if(p) { const otif = parseInt(p); mockData.kpisInicio.otif.porcentaje = otif; mockData.kpisInicio.alertasActivas.valor = Math.round((100 - otif) * 0.55); window.navigate('inicio'); }">
-                <div class="circular-progress" style="background: conic-gradient(var(--success) ${kpis.otif.porcentaje}%, #E2E8F0 0);">
-                    <span class="circular-value">${kpis.otif.porcentaje}%</span>
-                </div>
-                <div class="kpi-content" style="margin-left: 10px;">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value">OTIF</span>
-                        ${renderTrend(kpis.otif)}
-                    </div>
-                </div>
-            </div>
-
-            <div class="card kpi-card">
-                <div class="kpi-icon blue"><i class="ph-fill ph-truck"></i></div>
-                <div class="kpi-content">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value editable-kpi" data-kpi="vehiculos">${kpis.vehiculos.valor}</span>
-                        ${renderTrend(kpis.vehiculos)}
-                    </div>
-                    <div class="kpi-label">Vehículos</div>
-                </div>
-            </div>
-
-            <div class="card kpi-card">
-                <div class="kpi-icon red"><i class="ph-fill ph-warning"></i></div>
-                <div class="kpi-content">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value editable-kpi" data-kpi="alertasActivas">${kpis.alertasActivas.valor}</span>
-                        ${renderTrend(kpis.alertasActivas)}
-                    </div>
-                    <div class="kpi-label">Alertas activas</div>
-                </div>
-            </div>
+        <div class="dashboard-grid" id="inicio-kpis-container">
+            <!-- Cargando KPIs... -->
+            <div style="padding: 20px; color: var(--text-muted);">Cargando indicadores...</div>
         </div>
 
         <div class="dashboard-main">
@@ -79,11 +28,17 @@ const renderInicio = () => {
                     <div class="badge-pill active"><i class="ph-fill ph-sparkle"></i> Gemini 2.1 Pro</div>
                 </div>
                 <div class="ai-list" id="ai-recommendations-list">
-                    <!-- Injected via JS -->
+                    <div class="ai-recommendation-card">
+                        <div class="ai-icon green"><i class="ph ph-check-circle"></i></div>
+                        <div class="ai-content">
+                            <h4>Rutas Optimizadas</h4>
+                            <p>No hay alertas de tráfico severas. La operación fluye con normalidad.</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="ai-footer">
                     <i class="ph-fill ph-sparkle"></i>
-                    <p>La IA analiza en tiempo real tráfico, ventanas de entrega y capacidad de la flota para maximizar el cumplimiento.</p>
+                    <p>La IA analiza en tiempo real tráfico, ventanas de entrega y capacidad de la flota.</p>
                 </div>
             </div>
         </div>
@@ -116,13 +71,11 @@ const renderInicio = () => {
                                 <th>ID</th>
                                 <th>Destino</th>
                                 <th>Vehículo</th>
-                                <th>Hora estimada</th>
                                 <th>Estado</th>
-                                <th></th>
                             </tr>
                         </thead>
                         <tbody id="inicio-table-body">
-                            <!-- Injected via JS -->
+                            <tr><td colspan="4" style="text-align:center; padding: 20px;">Cargando operaciones...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -131,54 +84,103 @@ const renderInicio = () => {
     `;
 };
 
-const initInicio = () => {
-    // 1. Populate AI Recommendations
-    const aiContainer = document.getElementById('ai-recommendations-list');
-    if (aiContainer) {
-        aiContainer.innerHTML = mockData.recomendacionesIA.map(r => `
-            <div class="ai-recommendation-card">
-                <div class="ai-icon ${r.color}"><i class="ph ${r.icon}"></i></div>
-                <div class="ai-content">
-                    <h4>${r.titulo}</h4>
-                    <p>${r.descripcion}</p>
+const initInicio = async () => {
+    
+    // Función auxiliar para renderizar tendencia
+    const renderTrend = (tendencia, tendenciaPositiva, textoTendencia) => {
+        const icon = tendenciaPositiva ? 'ph-caret-up' : 'ph-caret-down';
+        const colorClass = tendenciaPositiva ? 'positive' : 'negative';
+        return `<span class="kpi-trend ${colorClass}"><i class="ph-bold ${icon}"></i> ${tendencia} ${textoTendencia}</span>`;
+    };
+
+    // 1. Cargar KPIs desde API
+    try {
+        const kpis = await window.API.getKPIs();
+        const kpiContainer = document.getElementById('inicio-kpis-container');
+        if (kpiContainer && kpis) {
+            kpiContainer.innerHTML = `
+                <div class="card kpi-card">
+                    <div class="kpi-icon blue"><i class="ph-fill ph-cube"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">${kpis.entregasDiarias?.valor || 0}</span>
+                            ${renderTrend(kpis.entregasDiarias?.tendencia || '0%', kpis.entregasDiarias?.tendenciaPositiva, kpis.entregasDiarias?.textoTendencia || '')}
+                        </div>
+                        <div class="kpi-label">Entregas diarias</div>
+                    </div>
                 </div>
-                <i class="ph ph-caret-right ai-arrow"></i>
-            </div>
-        `).join('');
-    }
-
-    // 2. Populate Table
-    const tbody = document.getElementById('inicio-table-body');
-    if (tbody) {
-        tbody.innerHTML = mockData.operaciones.slice(0, 5).map(op => {
-            let statusClass = 'ontime';
-            if(op.estado === 'En riesgo') statusClass = 'risk';
-            if(op.estado === 'Retrasada') statusClass = 'delayed';
-
-            return `
-                <tr>
-                    <td style="color: var(--primary); font-weight: 600;">${op.id}</td>
-                    <td>${op.destino}</td>
-                    <td>${op.vehiculo}</td>
-                    <td>11:20</td>
-                    <td><span class="status-badge ${statusClass}">${op.estado}</span></td>
-                    <td style="color: var(--text-muted); cursor: pointer;"><i class="ph-bold ph-dots-three"></i></td>
-                </tr>
+                <div class="card kpi-card">
+                    <div class="circular-progress" style="background: conic-gradient(var(--success) ${kpis.otif?.valor || 0}%, #E2E8F0 0);">
+                        <span class="circular-value">${kpis.otif?.valor || 0}%</span>
+                    </div>
+                    <div class="kpi-content" style="margin-left: 10px;">
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">OTIF</span>
+                            ${renderTrend(kpis.otif?.tendencia || '0%', kpis.otif?.tendenciaPositiva, '')}
+                        </div>
+                    </div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon blue"><i class="ph-fill ph-truck"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">${kpis.vehiculos?.valor || 0}</span>
+                            ${renderTrend(kpis.vehiculos?.tendencia || '0', kpis.vehiculos?.tendenciaPositiva, '')}
+                        </div>
+                        <div class="kpi-label">Vehículos</div>
+                    </div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon red"><i class="ph-fill ph-warning"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value-row">
+                            <span class="kpi-value">${kpis.alertasActivas?.valor || 0}</span>
+                            ${renderTrend(kpis.alertasActivas?.tendencia || '0', kpis.alertasActivas?.tendenciaPositiva, '')}
+                        </div>
+                        <div class="kpi-label">Alertas activas</div>
+                    </div>
+                </div>
             `;
-        }).join('');
+        }
+    } catch (e) {
+        console.error("Error al cargar KPIs", e);
     }
 
-    // 3. Init Chart.js
+    // 2. Cargar Operaciones
+    try {
+        const operaciones = await window.API.getOperaciones();
+        const tbody = document.getElementById('inicio-table-body');
+        if (tbody && operaciones) {
+            tbody.innerHTML = operaciones.slice(0, 5).map(op => {
+                let statusClass = 'ontime';
+                if(op.estado === 'En riesgo') statusClass = 'risk';
+                if(op.estado === 'Con retraso') statusClass = 'delayed';
+
+                return `
+                    <tr>
+                        <td style="color: var(--primary); font-weight: 600;">${op.id}</td>
+                        <td>${op.destino}</td>
+                        <td>${op.vehiculo || 'No asignado'}</td>
+                        <td><span class="status-badge ${statusClass}">${op.estado}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        console.error("Error al cargar operaciones", e);
+    }
+
+    // 3. Init Chart.js (Estático por ahora, solo para visualización)
     const ctx = document.getElementById('entregasChart');
     if (ctx) {
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: mockData.tendenciaEntregas.labels,
+                labels: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
                 datasets: [
                     {
                         label: 'Entregas',
-                        data: mockData.tendenciaEntregas.entregas.slice(0,8),
+                        data: [12, 19, 15, 22, 30, 25, 18, 10],
                         backgroundColor: '#0052FF',
                         borderRadius: 4,
                         barPercentage: 0.6,
@@ -186,7 +188,7 @@ const initInicio = () => {
                     },
                     {
                         label: 'Completadas',
-                        data: mockData.tendenciaEntregas.completadas.slice(0,8),
+                        data: [10, 15, 12, 20, 25, 20, 15, 5],
                         backgroundColor: '#00B5D8',
                         borderRadius: 4,
                         barPercentage: 0.6,
@@ -197,69 +199,33 @@ const initInicio = () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#E2E8F0', drawBorder: false },
-                        ticks: { color: '#A3AED0' }
-                    },
-                    x: {
-                        grid: { display: false, drawBorder: false },
-                        ticks: { color: '#A3AED0' }
-                    }
+                    y: { beginAtZero: true, grid: { color: '#E2E8F0', drawBorder: false } },
+                    x: { grid: { display: false, drawBorder: false } }
                 }
             }
         });
     }
 
-    // 4. Init Google Maps with Traffic Layer
+    // 4. Init Google Maps
     const mapEl = document.getElementById('inicio-map');
     if (mapEl) {
         window.API.getConfig().then(config => {
-            if(!config.mapsApiKey) {
-                console.error("No se encontró MAPS_API_KEY en la configuración");
-                return;
-            }
+            if(!config.mapsApiKey) return;
             
-            // Function to init the map once script is loaded
             window.initGoogleMap = () => {
                 const map = new google.maps.Map(mapEl, {
-                    center: { lat: -33.4489, lng: -70.6693 }, // Santiago, Chile
+                    center: { lat: -33.4489, lng: -70.6693 },
                     zoom: 11,
                     disableDefaultUI: true,
                     zoomControl: true
                 });
 
-                // Add Traffic Layer (Trafico en vivo)
                 const trafficLayer = new google.maps.TrafficLayer();
                 trafficLayer.setMap(map);
-
-                // Add some dummy markers (Circles for visual similarity)
-                const markers = [
-                    { lat: -33.42, lng: -70.60, color: '#01B574' }, // A tiempo
-                    { lat: -33.48, lng: -70.70, color: '#01B574' },
-                    { lat: -33.40, lng: -70.55, color: '#FFCE20' }, // En riesgo
-                    { lat: -33.50, lng: -70.58, color: '#EE5D50' }  // Retrasada
-                ];
-
-                markers.forEach(m => {
-                    new google.maps.Circle({
-                        strokeColor: '#FFFFFF',
-                        strokeOpacity: 0.8,
-                        strokeWeight: 1,
-                        fillColor: m.color,
-                        fillOpacity: 1,
-                        map,
-                        center: { lat: m.lat, lng: m.lng },
-                        radius: 800
-                    });
-                });
             };
 
-            // Check if google maps is already loaded
             if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
                 const script = document.createElement('script');
                 script.src = `https://maps.googleapis.com/maps/api/js?key=${config.mapsApiKey}&callback=initGoogleMap`;
@@ -269,23 +235,6 @@ const initInicio = () => {
             } else {
                 window.initGoogleMap();
             }
-        }).catch(err => console.error("Error cargando configuración de mapa:", err));
+        }).catch(err => console.error(err));
     }
-
-    // 5. Edición Didáctica de KPIs
-    document.querySelectorAll('.editable-kpi').forEach(el => {
-        el.title = "Haz clic para editar este valor";
-        el.style.cursor = "pointer";
-        el.style.borderBottom = "1px dashed var(--primary)";
-        
-        el.addEventListener('click', (e) => {
-            const kpiKey = e.target.dataset.kpi;
-            const currentVal = mockData.kpisInicio[kpiKey].valor;
-            const newVal = prompt(`Ingresa el nuevo valor para ${kpiKey}:`, currentVal);
-            if (newVal) {
-                mockData.kpisInicio[kpiKey].valor = newVal;
-                window.navigate('inicio'); // Recargar vista
-            }
-        });
-    });
 };

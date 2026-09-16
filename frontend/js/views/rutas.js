@@ -2,36 +2,9 @@
 
 const renderRutas = () => {
     return `
-        <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);">
-            <div class="card kpi-card">
-                <div class="kpi-icon blue"><i class="ph-fill ph-map-pin-line"></i></div>
-                <div class="kpi-content">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value">48</span>
-                    </div>
-                    <div class="kpi-label">Rutas activas</div>
-                </div>
-            </div>
-            
-            <div class="card kpi-card">
-                <div class="kpi-icon warning"><i class="ph-fill ph-warning"></i></div>
-                <div class="kpi-content">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value">6</span>
-                    </div>
-                    <div class="kpi-label">Rutas en riesgo</div>
-                </div>
-            </div>
-
-            <div class="card kpi-card">
-                <div class="kpi-icon" style="background: #EEF2FF; color: #4338CA;"><i class="ph-fill ph-road-horizon"></i></div>
-                <div class="kpi-content">
-                    <div class="kpi-value-row">
-                        <span class="kpi-value">12.480</span>
-                    </div>
-                    <div class="kpi-label">km planificados</div>
-                </div>
-            </div>
+        <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);" id="rutas-kpis-container">
+            <!-- KPIs Injected via JS -->
+            <div style="padding: 20px; color: var(--text-muted);">Cargando...</div>
         </div>
 
         <div class="operation-layout">
@@ -69,18 +42,17 @@ const renderRutas = () => {
                                     <th>Distancia</th>
                                     <th>Tiempo estimado</th>
                                     <th>Avance</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="rutas-table-body">
-                                <!-- Injected via JS -->
+                                <tr><td colspan="10" style="text-align:center; padding: 20px;">Cargando rutas...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Optimization Panel -->
+            <!-- Optimization Panel (Static for visual) -->
             <div class="card detail-panel">
                 <div class="detail-header">
                     <h3 class="card-title">Optimización de ruta</h3>
@@ -142,59 +114,106 @@ const renderRutas = () => {
     `;
 };
 
-const initRutas = () => {
-    // 1. Init Table
-    const tbody = document.getElementById('rutas-table-body');
-    if (tbody) {
-        tbody.innerHTML = mockData.rutas.map(r => {
-            let statusClass = 'ontime';
-            let barColor = 'green';
-            if(r.estado === 'Planificada') { statusClass = 'outline'; barColor = 'blue'; }
-            if(r.estado === 'En riesgo') { statusClass = 'risk'; barColor = 'blue'; }
+const initRutas = async () => {
+    try {
+        const rutas = await window.API.getRutas();
+        
+        // Render KPIs based on rutas
+        const activas = rutas.filter(r => r.estado === 'Activa').length;
+        const enRiesgo = rutas.filter(r => r.estado === 'En riesgo').length;
+        const kmTotal = rutas.reduce((acc, r) => acc + (r.distancia || 0), 0);
 
-            return `
-                <tr>
-                    <td style="font-weight: 600;">${r.id}</td>
-                    <td>${r.nombre}</td>
-                    <td>${r.zona}</td>
-                    <td><span class="status-badge ${statusClass}">${r.estado}</span></td>
-                    <td>${r.vehiculo}</td>
-                    <td>${r.conductor}</td>
-                    <td>${r.paradas}</td>
-                    <td>${r.distancia} km</td>
-                    <td>${r.tiempoEstimado}</td>
-                    <td>
-                        <div class="progress-cell">
-                            <span style="width: 35px; font-size: 12px; font-weight: 600;">${r.avance}%</span>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill ${barColor}" style="width: ${r.avance}%;"></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td style="color: var(--text-muted); cursor: pointer; text-align: center;"><i class="ph-bold ph-dots-three"></i></td>
-                </tr>
+        const kpiContainer = document.getElementById('rutas-kpis-container');
+        if (kpiContainer) {
+            kpiContainer.innerHTML = `
+                <div class="card kpi-card">
+                    <div class="kpi-icon blue"><i class="ph-fill ph-map-pin-line"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value-row"><span class="kpi-value">${activas}</span></div>
+                        <div class="kpi-label">Rutas activas</div>
+                    </div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon warning"><i class="ph-fill ph-warning"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value-row"><span class="kpi-value">${enRiesgo}</span></div>
+                        <div class="kpi-label">Rutas en riesgo</div>
+                    </div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon" style="background: #EEF2FF; color: #4338CA;"><i class="ph-fill ph-road-horizon"></i></div>
+                    <div class="kpi-content">
+                        <div class="kpi-value-row"><span class="kpi-value">${kmTotal}</span></div>
+                        <div class="kpi-label">km planificados</div>
+                    </div>
+                </div>
             `;
-        }).join('');
+        }
+
+        // Init Table
+        const tbody = document.getElementById('rutas-table-body');
+        if (tbody && rutas) {
+            tbody.innerHTML = rutas.map(r => {
+                let statusClass = 'ontime';
+                let barColor = 'green';
+                if(r.estado === 'Planificada') { statusClass = 'outline'; barColor = 'blue'; }
+                if(r.estado === 'En riesgo') { statusClass = 'risk'; barColor = 'blue'; }
+
+                return `
+                    <tr>
+                        <td style="font-weight: 600;">${r.id}</td>
+                        <td>${r.nombre}</td>
+                        <td>${r.zona}</td>
+                        <td><span class="status-badge ${statusClass}">${r.estado}</span></td>
+                        <td>${r.vehiculo || 'No asig.'}</td>
+                        <td>${r.conductor || 'No asig.'}</td>
+                        <td>${r.paradas}</td>
+                        <td>${r.distancia} km</td>
+                        <td>${r.tiempoEstimado}</td>
+                        <td>
+                            <div class="progress-cell">
+                                <span style="width: 35px; font-size: 12px; font-weight: 600;">${r.avance}%</span>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill ${barColor}" style="width: ${r.avance}%;"></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+    } catch(e) {
+        console.error("Error al cargar rutas", e);
     }
 
-    // 2. Init Map
+    // 2. Init Google Maps
     const mapEl = document.getElementById('rutas-map');
-    if (mapEl && typeof L !== 'undefined') {
-        const map = L.map('rutas-map').setView([-33.4489, -70.6693], 12);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+    if (mapEl) {
+        window.API.getConfig().then(config => {
+            if(!config.mapsApiKey) return;
+            
+            window.initGoogleMapRutas = () => {
+                const map = new google.maps.Map(mapEl, {
+                    center: { lat: -33.4489, lng: -70.6693 },
+                    zoom: 11,
+                    disableDefaultUI: true,
+                    zoomControl: true
+                });
 
-        // Draw some dummy routes
-        const rutaRoja = [[-33.43, -70.68], [-33.44, -70.70], [-33.46, -70.71], [-33.47, -70.68], [-33.45, -70.66]];
-        const rutaVerde = [[-33.40, -70.65], [-33.41, -70.62], [-33.43, -70.64], [-33.42, -70.66], [-33.40, -70.65]];
-        const rutaAzul = [[-33.43, -70.60], [-33.44, -70.58], [-33.46, -70.57], [-33.45, -70.61]];
-        const rutaNaranja = [[-33.48, -70.64], [-33.49, -70.61], [-33.51, -70.62], [-33.50, -70.65]];
+                const trafficLayer = new google.maps.TrafficLayer();
+                trafficLayer.setMap(map);
+            };
 
-        L.polyline(rutaRoja, {color: '#EE5D50', weight: 4}).addTo(map);
-        L.polyline(rutaVerde, {color: '#01B574', weight: 4}).addTo(map);
-        L.polyline(rutaAzul, {color: '#0052FF', weight: 4}).addTo(map);
-        L.polyline(rutaNaranja, {color: '#FFCE20', weight: 4}).addTo(map);
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${config.mapsApiKey}&callback=initGoogleMapRutas`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+            } else {
+                window.initGoogleMapRutas();
+            }
+        }).catch(err => console.error(err));
     }
 };
