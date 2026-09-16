@@ -23,7 +23,7 @@ async function fetchAPI(endpoint, options = {}) {
         if (response.status === 401 || response.status === 403) {
             // Token inválido o expirado, redirigir al login
             localStorage.removeItem('poli_jwt');
-            window.location.href = '/login.html';
+            window.location.href = 'login.html';
             throw new Error('No autorizado');
         }
 

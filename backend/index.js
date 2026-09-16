@@ -50,7 +50,7 @@ app.use('/api/v1/data/*', async (c, next) => {
 
   const token = authHeader.split(' ')[1]
   try {
-    const decodedPayload = await verify(token, c.env.JWT_SECRET || 'fallback-secret')
+    const decodedPayload = await verify(token, c.env.JWT_SECRET || 'fallback-secret', 'HS256')
     c.set('user', decodedPayload)
     await next()
   } catch (e) {

@@ -9,6 +9,7 @@ Este documento registra los problemas, trabas y tareas pendientes identificadas 
 - **Gráficos en Dashboard:** Chart.js en `inicio.js` requiere datos asíncronos. Actualmente está síncrono. Esto lanzará errores o renderizará vacío si no se adapta.
 - **Manejo de CORS en Local:** Asegurar que `wrangler dev` en el puerto 8787 esté permitiendo explícitamente solicitudes del servidor estático local del frontend, o los fetch fallarán.
 - **Almacenamiento de Contraseñas:** Actualmente las contraseñas están en texto plano en la base de datos (para fines de la demostración simple). Se debe considerar encriptar con `bcrypt` u otro hash nativo (Crypto Web API) en futuras iteraciones si pasa a producción real.
+- **Bug de Sesión Expirada (Hono JWT):** Se solucionó un problema crítico donde el sistema botaba la sesión inmediatamente después del login. Esto ocurría porque la función `verify` de `hono/jwt` en sus versiones más recientes exige especificar explícitamente el algoritmo (ej. `HS256`) como medida de seguridad. Al omitirse, el middleware lanzaba un error, rechazando todas las peticiones con 401.
 
 ### Mejoras Pendientes
 - Implementar validación estricta de variables de entorno en el Worker para `JWT_SECRET` en lugar de un string en duro en el código.
