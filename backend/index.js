@@ -7,8 +7,6 @@ const app = new Hono()
 // CORS Middleware
 app.use('/*', cors())
 
-const JWT_SECRET = 'mi-secreto-super-seguro-para-demo' // En producción esto iría en env.JWT_SECRET
-
 // ==========================================
 // RUTAS PUBLICAS (Auth)
 // ==========================================
@@ -29,14 +27,14 @@ app.post('/api/v1/auth/login', async (c) => {
     return c.json({ error: 'Credenciales inválidas' }, 401)
   }
 
-  // Generar Token JWT
+  // Generar Token JWT usando secreto del entorno
   const payload = {
     username: result.username,
     role: result.role_name,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 // 1 day
   }
   
-  const token = await sign(payload, JWT_SECRET)
+  const token = await sign(payload, c.env.JWT_SECRET || 'fallback-secret')
   
   return c.json({ token, role: result.role_name, username: result.username })
 })
@@ -52,7 +50,7 @@ app.use('/api/v1/data/*', async (c, next) => {
 
   const token = authHeader.split(' ')[1]
   try {
-    const decodedPayload = await verify(token, JWT_SECRET)
+    const decodedPayload = await verify(token, c.env.JWT_SECRET || 'fallback-secret')
     c.set('user', decodedPayload)
     await next()
   } catch (e) {
@@ -74,6 +72,13 @@ const requireRole = (allowedRoles) => {
 // ==========================================
 // RUTAS PROTEGIDAS
 // ==========================================
+
+// Configuración general (Visualizer, User, Admin)
+app.get('/api/v1/data/config', async (c) => {
+  return c.json({
+    mapsApiKey: c.env.MAPS_API_KEY
+  })
+})
 
 // Dashboard KPIs (Visualizer, User, Admin)
 app.get('/api/v1/data/kpis', async (c) => {

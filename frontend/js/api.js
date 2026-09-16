@@ -44,6 +44,9 @@ window.API = {
         });
         return data; // { token, role, username }
     },
+    getConfig: async () => {
+        return await fetchAPI('/data/config');
+    },
     getKPIs: async () => {
         return await fetchAPI('/data/kpis');
     },

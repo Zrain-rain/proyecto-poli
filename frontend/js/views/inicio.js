@@ -215,20 +215,61 @@ const initInicio = () => {
         });
     }
 
-    // 4. Init Leaflet Map
+    // 4. Init Google Maps with Traffic Layer
     const mapEl = document.getElementById('inicio-map');
-    if (mapEl && typeof L !== 'undefined') {
-        const map = L.map('inicio-map').setView([-33.4489, -70.6693], 11); // Santiago, Chile
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+    if (mapEl) {
+        window.API.getConfig().then(config => {
+            if(!config.mapsApiKey) {
+                console.error("No se encontró MAPS_API_KEY en la configuración");
+                return;
+            }
+            
+            // Function to init the map once script is loaded
+            window.initGoogleMap = () => {
+                const map = new google.maps.Map(mapEl, {
+                    center: { lat: -33.4489, lng: -70.6693 }, // Santiago, Chile
+                    zoom: 11,
+                    disableDefaultUI: true,
+                    zoomControl: true
+                });
 
-        // Add some dummy markers
-        L.circleMarker([-33.42, -70.60], { color: '#01B574', radius: 6, fillOpacity: 1 }).addTo(map); // A tiempo
-        L.circleMarker([-33.48, -70.70], { color: '#01B574', radius: 6, fillOpacity: 1 }).addTo(map);
-        L.circleMarker([-33.40, -70.55], { color: '#FFCE20', radius: 6, fillOpacity: 1 }).addTo(map); // En riesgo
-        L.circleMarker([-33.50, -70.58], { color: '#EE5D50', radius: 6, fillOpacity: 1 }).addTo(map); // Retrasada
+                // Add Traffic Layer (Trafico en vivo)
+                const trafficLayer = new google.maps.TrafficLayer();
+                trafficLayer.setMap(map);
+
+                // Add some dummy markers (Circles for visual similarity)
+                const markers = [
+                    { lat: -33.42, lng: -70.60, color: '#01B574' }, // A tiempo
+                    { lat: -33.48, lng: -70.70, color: '#01B574' },
+                    { lat: -33.40, lng: -70.55, color: '#FFCE20' }, // En riesgo
+                    { lat: -33.50, lng: -70.58, color: '#EE5D50' }  // Retrasada
+                ];
+
+                markers.forEach(m => {
+                    new google.maps.Circle({
+                        strokeColor: '#FFFFFF',
+                        strokeOpacity: 0.8,
+                        strokeWeight: 1,
+                        fillColor: m.color,
+                        fillOpacity: 1,
+                        map,
+                        center: { lat: m.lat, lng: m.lng },
+                        radius: 800
+                    });
+                });
+            };
+
+            // Check if google maps is already loaded
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${config.mapsApiKey}&callback=initGoogleMap`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+            } else {
+                window.initGoogleMap();
+            }
+        }).catch(err => console.error("Error cargando configuración de mapa:", err));
     }
 
     // 5. Edición Didáctica de KPIs
