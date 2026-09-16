@@ -1,5 +1,5 @@
-// URL base de la API (Worker)
-const API_BASE_URL = 'http://localhost:8787/api/v1';
+// URL base de la API (Worker Desplegado)
+const API_BASE_URL = 'https://poli-worker.zebba-leniz.workers.dev/api/v1';
 
 // Función genérica para hacer peticiones a la API
 async function fetchAPI(endpoint, options = {}) {

@@ -9,5 +9,5 @@ node_compat = true
 [[d1_databases]]
 binding = "DB" # Dentro del código se accede como env.DB
 database_name = "poli-db"
-database_id = "00000000-0000-0000-0000-000000000000" # Se debe actualizar al crear en producción
+database_id = "e773fb93-8713-4690-9716-70ff6ea4d5a3" # Se debe actualizar al crear en producción
 migrations_dir = "../db/migrations"
