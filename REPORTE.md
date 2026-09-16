@@ -21,3 +21,10 @@ Este documento registra los problemas, trabas y tareas pendientes identificadas 
 - **Módulo de Flota (Admin):** Se añadió el módulo `flota.js` y los endpoints correspondientes en el Worker (`GET /api/v1/data/flota`, `PUT /api/v1/data/flota/:id/estado`) permitiendo que el administrador active o desactive camiones.
 - **Módulo de Despachador (Mobile-First):** Se agregó el rol `despachador` a la DB. Se construyó el módulo `despachador.js` con diseño 100% responsivo y botones táctiles gigantes, permitiendo al conductor actualizar el estado de sus pedidos (Entregado, Con Retraso) mediante el nuevo endpoint `PUT /api/v1/data/operaciones/:id/estado`.
 - **Rutas y UI basada en roles:** Se actualizó `app.js` para mostrar u ocultar menús dependiendo del rol actual (Admin ve Flota, Despachador ve únicamente Mis Entregas).
+
+### Credenciales de Usuario (Semilla Actual)
+Para acceder a la plataforma y probar los roles, utiliza las siguientes credenciales:
+- **Admin**: Usuario: `admin` | Clave: `admin123` (Acceso completo + Flota)
+- **Despachador**: Usuario: `conductor1` | Clave: `camion123` (Vista móvil exclusiva)
+- **Operador**: Usuario: `operador` | Clave: `operador123`
+- **Cliente**: Usuario: `cliente` | Clave: `cliente123`
