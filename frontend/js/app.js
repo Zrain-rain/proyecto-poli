@@ -56,8 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dateWidget && timeWidget) {
         const updateClock = () => {
             const now = new Date();
-            dateWidget.textContent = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            timeWidget.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            dateWidget.textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+            timeWidget.textContent = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         };
         updateClock();
         setInterval(updateClock, 1000);

@@ -265,7 +265,7 @@ const initInicio = async () => {
                 destinos.forEach((destino, index) => {
                     const directionsRenderer = new google.maps.DirectionsRenderer({
                         map: map,
-                        suppressMarkers: false,
+                        suppressMarkers: true, // Evitar que sobreescriba nuestros marcadores
                         polylineOptions: {
                             strokeColor: index === 0 ? '#0052FF' : (index === 1 ? '#01B574' : '#00B5D8'),
                             strokeWeight: 4,
@@ -281,11 +281,27 @@ const initInicio = async () => {
                         if (status === 'OK') {
                             directionsRenderer.setDirections(response);
                             
-                            // Ajustar los límites (zoom) del mapa incluyendo esta nueva ruta
+                            // Ajustar los límites (zoom) del mapa y poner marcador de destino
                             const route = response.routes[0];
                             if (route && route.legs && route.legs[0]) {
-                                bounds.extend(route.legs[0].end_location);
+                                const endLocation = route.legs[0].end_location;
+                                bounds.extend(endLocation);
                                 map.fitBounds(bounds);
+
+                                // Marcador del destino
+                                new google.maps.Marker({
+                                    position: endLocation,
+                                    map: map,
+                                    title: "Destino: " + destino,
+                                    icon: {
+                                        path: google.maps.SymbolPath.CIRCLE,
+                                        fillColor: '#EE5D50',
+                                        fillOpacity: 1,
+                                        strokeWeight: 2,
+                                        strokeColor: '#FFF',
+                                        scale: 7
+                                    }
+                                });
                             }
                         } else {
                             console.error('Fallo al cargar ruta hacia ' + destino + ':', status);
@@ -304,5 +320,32 @@ const initInicio = async () => {
                 window.initGoogleMap();
             }
         }).catch(err => console.error(err));
+    }
+
+    // 5. Cargar Recomendaciones IA
+    const aiList = document.getElementById('ai-recommendations-list');
+    if (aiList) {
+        aiList.innerHTML = `<div style="padding: 16px; color: var(--text-muted);">Consultando a Gemini AI...</div>`;
+        try {
+            const aiData = await window.API.getAIRecomendaciones();
+            if (aiData && aiData.recomendacion) {
+                aiList.innerHTML = `
+                    <div class="ai-recommendation-card" style="border-left: 4px solid var(--primary); display:block; padding:16px;">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                            <div class="ai-icon blue"><i class="ph-fill ph-robot"></i></div>
+                            <h4 style="margin:0;">Análisis de Gemini</h4>
+                        </div>
+                        <div class="ai-content" style="color: var(--text-main); line-height: 1.5;">
+                            ${aiData.recomendacion}
+                        </div>
+                    </div>
+                `;
+            } else {
+                aiList.innerHTML = `<div style="padding: 16px; color: var(--danger);">No se pudo obtener recomendación.</div>`;
+            }
+        } catch (e) {
+            console.error("Error cargando IA:", e);
+            aiList.innerHTML = `<div style="padding: 16px; color: var(--danger);">Error conectando con Gemini.</div>`;
+        }
     }
 };

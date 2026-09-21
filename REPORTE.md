@@ -38,3 +38,10 @@ Para acceder a la plataforma y probar los roles, utiliza las siguientes credenci
 - **Diferenciación de Flota**: Se modificó la tabla `vehicles` con la columna `tipo` para distinguir "Camiones" de "Vehículos", y se habilitó la visualización de ambas opciones en el menú lateral.
 - **Módulo de Reportes y Alertas**: Se crearon dos vistas nuevas, `alertas.js` (para ver el historial detallado de demoras) y `reportes.js` (para ver un pie-chart analítico y el rendimiento horario).
 - **Reloj y Menú Hamburguesa**: Se mejoró la navegación implementando un menú colapsable lateral y un reloj en tiempo real para mantener la plataforma siempre al día en el entorno visual.
+
+## Iteración 4: IA de Gemini y Fijación de Mapas (Actual)
+
+### Avances:
+- **Inteligencia Artificial Gemini**: Se creó el endpoint `/api/v1/data/ai/recomendaciones` en el Worker, el cual lee la operación actual de la base de datos y se comunica de forma segura usando la API Key de Gemini. Gemini retorna recomendaciones logísticas (como reasignación de choferes o proyecciones de rutas).
+- **Fijación de Marcador (Lampa)**: Se solucionó el problema del marcador de origen que desaparecía en Google Maps al configurar `suppressMarkers: true` en el `DirectionsRenderer` y dibujando explícitamente marcadores personalizados, garantizando que el Centro de Distribución siempre sea visible.
+- **Optimización de Reloj**: Se ajustó el script del reloj en `app.js` para usar la localización chilena (`es-CL`) y asegurar que se muestra inmediatamente desde el momento en que carga la plataforma.

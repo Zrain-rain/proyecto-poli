@@ -210,4 +210,60 @@ app.put('/api/v1/data/operaciones/:id/estado', requireRole(['admin', 'despachado
   return c.json({ success: true, message: 'Estado de operación actualizado' })
 })
 
+// ==========================================
+// NUEVOS ENDPOINTS: IA (Gemini)
+// ==========================================
+app.get('/api/v1/data/ai/recomendaciones', async (c) => {
+  try {
+    const query = `
+      SELECT o.id, o.destino, o.estado, d.nombre as conductor, o.ventana_horaria
+      FROM orders o
+      LEFT JOIN routes r ON o.route_id = r.id
+      LEFT JOIN drivers d ON r.driver_id = d.id
+      WHERE o.fecha = date('now', 'localtime') OR o.fecha IS NULL
+    `
+    const { results } = await c.env.DB.prepare(query).all()
+
+    const apiKey = c.env.GEMINI_API_KEY
+    if (!apiKey) {
+      return c.json({ error: 'Falta GEMINI_API_KEY en el entorno' }, 500)
+    }
+
+    const operacionesTexto = results.map(r => `Destino: ${r.destino}, Estado: ${r.estado}, Chofer: ${r.conductor || 'No asignado'}, Horario: ${r.ventana_horaria}`).join(' | ');
+
+    const promptText = `
+Eres un asistente logístico de IA para el sistema POLI. 
+Analiza la siguiente información de rutas en curso de hoy:
+${operacionesTexto}
+
+Instrucciones:
+1. Recomienda de forma breve y precisa si algún chofer debe ser cambiado por otro o si se debe cambiar una ruta para optimizar el tiempo.
+2. Revisa qué rutas están "Con retraso" o "En riesgo" y di honestamente si hay mejora posible.
+3. Si no hay mejora o es un problema de tráfico insalvable, sé honesto e indica que guardarás esa información para una próxima ruta (por ejemplo, evitar esa hora punta).
+Retorna la respuesta en formato HTML seguro (sin etiquetas html, head, body, script). Usa p, strong, ul, li para hacer la lectura agradable.
+    `;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }]
+      })
+    })
+
+    const data = await response.json()
+    if (data.error) {
+      console.error("Error from Gemini API:", data.error)
+      return c.json({ error: data.error.message }, 500)
+    }
+
+    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "<p>No pude generar recomendaciones en este momento.</p>"
+    
+    return c.json({ recomendacion: aiText })
+  } catch (err) {
+    console.error("Error Gemini:", err);
+    return c.json({ error: 'Fallo al conectar con IA' }, 500)
+  }
+})
+
 export default app

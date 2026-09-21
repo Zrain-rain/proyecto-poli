@@ -73,5 +73,8 @@ window.API = {
     },
     getAlertas: async () => {
         return await fetchAPI('/data/alertas');
+    },
+    getAIRecomendaciones: async () => {
+        return await fetchAPI('/data/ai/recomendaciones');
     }
 };
