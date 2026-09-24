@@ -1,5 +1,3 @@
-// js/views/operacion.js
-
 const renderOperacion = () => {
     return `
         <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -29,7 +27,7 @@ const renderOperacion = () => {
                     <div class="kpi-value-row">
                         <span class="kpi-value" id="kpi-op-risk">...</span>
                     </div>
-                    <div class="kpi-label">En riesgo</div>
+                    <div class="kpi-label">Pendientes / Riesgo</div>
                 </div>
             </div>
         </div>
@@ -39,37 +37,17 @@ const renderOperacion = () => {
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Operaciones de entrega</h3>
-                    <div class="filters-row">
-                        <div class="badge-pill outline" style="border-color: var(--primary); color: var(--primary); background: #EFF6FF;">Todas</div>
-                        <div class="badge-pill outline"><div class="dot green"></div> A tiempo</div>
-                        <div class="badge-pill outline"><div class="dot warning"></div> En riesgo</div>
-                        <div class="badge-pill outline"><div class="dot red"></div> Retrasadas</div>
-                        
-                        <select class="filter-select">
-                            <option>Zona</option>
-                        </select>
-                        <select class="filter-select">
-                            <option>Vehículo</option>
-                        </select>
-                        <select class="filter-select">
-                            <option>Estado</option>
-                        </select>
-                    </div>
                 </div>
                 
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Pedido</th>
+                                <th>ID Pedido</th>
                                 <th>Destino</th>
                                 <th>Ventana</th>
-                                <th>Vehículo</th>
-                                <th>Conductor</th>
+                                <th>Transporte</th>
                                 <th>Estado</th>
-                                <th>Avance</th>
-                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="operaciones-table-body">
@@ -77,109 +55,43 @@ const renderOperacion = () => {
                         </tbody>
                     </table>
                 </div>
-                <div style="margin-top: 16px; font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
-                    <span id="operaciones-footer-text">Mostrando 0 operaciones</span>
-                    <div style="display: flex; gap: 4px;">
-                        <button class="btn" style="padding: 4px 10px; background: white; border: 1px solid var(--border-color); color: var(--text-muted);"><i class="ph ph-caret-left"></i></button>
-                        <button class="btn btn-primary" style="padding: 4px 12px; border-radius: 8px;">1</button>
-                        <button class="btn" style="padding: 4px 12px; background: white; border: 1px solid transparent; color: var(--text-main);">2</button>
-                        <button class="btn" style="padding: 4px 12px; background: white; border: 1px solid transparent; color: var(--text-main);">3</button>
-                        <button class="btn" style="padding: 4px 10px; background: white; border: 1px solid var(--border-color); color: var(--text-muted);"><i class="ph ph-caret-right"></i></button>
-                    </div>
-                </div>
             </div>
 
             <!-- Detail Panel -->
-            <div class="card detail-panel">
+            <div class="card detail-panel" id="op-detail-panel" style="display: none;">
                 <div class="detail-header">
                     <div>
                         <h3 class="card-title">Detalle de operación</h3>
                     </div>
-                    <i class="ph ph-x" style="font-size: 20px; color: var(--text-muted); cursor: pointer;"></i>
+                    <i class="ph ph-x" style="font-size: 20px; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('op-detail-panel').style.display='none'"></i>
                 </div>
 
-                <div class="detail-id">
-                    <div class="id-icon"><i class="ph-fill ph-cube"></i></div>
+                <div class="detail-id" style="margin-bottom: 24px;">
                     <div class="id-info">
-                        <h2>#E4583</h2>
-                        <p>Pedido P-78233</p>
-                        <p>Ruta R3</p>
+                        <h2 id="det-id-pedido" style="margin-bottom: 4px;">Seleccione pedido</h2>
+                        <p id="det-destino" style="font-size: 13px; color: var(--text-muted);"></p>
                     </div>
-                    <div class="status-badge risk" style="margin-left: auto;">En riesgo</div>
+                    <div id="det-estado" class="status-badge ontime" style="margin-left: auto;">...</div>
                 </div>
-
-                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 24px 0;">
-
-                <div class="detail-info-grid">
-                    <div class="info-item">
-                        <div class="info-icon"><i class="ph-fill ph-truck"></i></div>
-                        <div class="info-text">
-                            <span>Vehículo</span>
-                            <p>V-207</p>
-                        </div>
+                
+                <div style="background: var(--bg-main); padding: 16px; border-radius: var(--radius-md); margin-bottom: 24px;">
+                    <h4 style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;">Información del Transporte</h4>
+                    <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                        <i class="ph-fill ph-truck" style="color: var(--primary);"></i>
+                        <span id="det-vehiculo" style="font-weight: 500; font-size: 14px;"></span>
                     </div>
-                    <div class="info-item">
-                        <div class="info-icon" style="color: var(--primary);"><i class="ph-fill ph-map-pin"></i></div>
-                        <div class="info-text">
-                            <span>Destino</span>
-                            <p>Las Condes</p>
-                        </div>
+                    <div style="display: flex; gap: 12px;">
+                        <i class="ph-fill ph-user" style="color: var(--primary);"></i>
+                        <span id="det-conductor" style="font-weight: 500; font-size: 14px;"></span>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 8px;">
-                        <span>Avance de ruta</span>
-                        <span>68%</span>
-                    </div>
-                    <div class="progress-bar-bg" style="width: 100%;">
-                        <div class="progress-bar-fill blue" style="width: 68%;"></div>
-                    </div>
+                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 16px;">Acciones Operativas</h4>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <button id="btn-asignar" class="btn btn-primary" style="width: 100%;"><i class="ph-fill ph-truck"></i> Asignar / Reasignar Transporte</button>
+                    <button id="btn-recoordinar" class="btn" style="width: 100%; border: 1px solid var(--border-color);"><i class="ph-bold ph-calendar"></i> Recoordinar Entrega</button>
+                    <button id="btn-anular" class="btn" style="width: 100%; background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA;"><i class="ph-bold ph-x-circle"></i> Anular Entrega</button>
                 </div>
-
-                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 16px;">Seguimiento de entrega</h4>
-                <div class="timeline">
-                    <div class="timeline-item completed">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-content">
-                            <h4>Pedido recibido</h4>
-                            <p>06 de jul, 08:15</p>
-                        </div>
-                    </div>
-                    <div class="timeline-item completed">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-content">
-                            <h4>Carga asignada</h4>
-                            <p>06 de jul, 09:10</p>
-                        </div>
-                    </div>
-                    <div class="timeline-item current">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-content">
-                            <h4>En ruta</h4>
-                            <p>06 de jul, 10:24</p>
-                        </div>
-                    </div>
-                    <div class="timeline-item">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-content">
-                            <h4 style="color: var(--text-muted);">Entrega estimada</h4>
-                            <p>06 de jul, 11:45</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="background-color: #FFFBEB; border: 1px solid #FFCE20; border-radius: 12px; padding: 16px; display: flex; gap: 12px; margin-top: 24px;">
-                    <i class="ph-fill ph-warning" style="color: var(--warning); font-size: 20px;"></i>
-                    <div>
-                        <h4 style="color: #975A16; font-size: 13px; font-weight: 700; margin-bottom: 4px;">Riesgo de atraso detectado</h4>
-                        <p style="color: #975A16; font-size: 12px; line-height: 1.4;">Se estima un retraso de 18 minutos por congestión en Av. Kennedy.</p>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" style="width: 100%; margin-top: 16px; background-color: #EFF6FF; color: var(--primary); box-shadow: none;">
-                    <i class="ph-fill ph-sparkle"></i> Ver recomendación de IA
-                </button>
             </div>
         </div>
     `;
@@ -193,160 +105,103 @@ const initOperacion = async () => {
         if (operaciones) {
             const total = operaciones.length;
             const aTiempo = operaciones.filter(op => op.estado === 'A tiempo' || op.estado === 'Entregado' || op.estado === 'ENTREGADO').length;
-            const enRiesgo = operaciones.filter(op => op.estado === 'En riesgo' || op.estado === 'Con retraso').length;
+            const enRiesgo = total - aTiempo;
             
             const elTotal = document.getElementById('kpi-op-total');
             const elOk = document.getElementById('kpi-op-ok');
             const elRisk = document.getElementById('kpi-op-risk');
-            const elFooter = document.getElementById('operaciones-footer-text');
             
             if (elTotal) elTotal.textContent = total;
             if (elOk) elOk.textContent = aTiempo;
             if (elRisk) elRisk.textContent = enRiesgo;
-            if (elFooter) elFooter.textContent = `Mostrando ${total} operaciones`;
         }
 
-        // Setup modal logic for assigning vehicles globally
-        window.asignarVehiculoModal = async (idPedido) => {
+        // Action Handlers
+        let selectedOp = null;
+
+        document.getElementById('btn-anular').onclick = async () => {
+            if(!selectedOp) return;
+            window.showModal('Anular Entrega', [{ id: 'motivo', label: 'Motivo de anulación (opcional)', value: '' }], async () => {
+                try {
+                    // MOCK ACTUAL DB CALL
+                    await window.API.registrarIncidencia({ id_pedido: selectedOp.id_pedido, tipo_incidencia: 'Anulación de Operación', descripcion: 'Cancelado por usuario' });
+                    // In real DB, we also update the order state. We simulate this by showing success.
+                    window.showToast("Operación anulada en la base de datos.", "success");
+                    window.navigate('operacion'); // reload
+                } catch(e) { window.showToast(e.message, 'error'); }
+            });
+        };
+
+        document.getElementById('btn-recoordinar').onclick = async () => {
+            if(!selectedOp) return;
+            window.showModal('Recoordinar Entrega', [
+                { id: 'nueva_fecha', label: 'Nueva Fecha', type: 'date', value: '' },
+                { id: 'nueva_ventana', label: 'Nueva Ventana', value: '14:00 - 18:00' }
+            ], async (vals) => {
+                if(!vals.nueva_fecha) return window.showToast('Debe seleccionar fecha', 'warning');
+                try {
+                    // MOCK ACTUAL DB CALL for recoorindation
+                    await window.API.registrarIncidencia({ id_pedido: selectedOp.id_pedido, tipo_incidencia: 'Recoordinación', descripcion: 'Nueva fecha: ' + vals.nueva_fecha });
+                    window.showToast("Pedido recoordinado exitosamente.", "success");
+                    window.navigate('operacion');
+                } catch(e) { window.showToast(e.message, 'error'); }
+            });
+        };
+
+        document.getElementById('btn-asignar').onclick = async () => {
+            if(!selectedOp) return;
             try {
                 const flotaRaw = await window.API.getFlota();
-                const disponibles = flotaRaw.filter(v => v.estado === 'DISPONIBLE' || v.estado === 'Activo');
-                
-                if (disponibles.length === 0) {
-                    window.showToast("No hay vehículos disponibles actualmente.", "warning");
-                    return;
-                }
-
-                const options = disponibles.map(v => ({
-                    value: v.id + '|' + v.conductor,
-                    text: `${v.patente} - ${v.conductor || 'Sin conductor'} (${v.tipo || 'Vehículo'})`
-                }));
-
-                window.showModal('Asignar Vehículo a Pedido #' + idPedido, [
-                    { 
-                        id: 'vehiculo_data', 
-                        label: 'Seleccionar Vehículo Disponible', 
-                        type: 'select',
-                        options: options
-                    }
-                ], async (values) => {
-                    if (values.vehiculo_data) {
+                const opciones = flotaRaw.map(v => ({ value: v.id + '|' + v.conductor, text: v.patente + ' - ' + (v.conductor || 'Sin conductor') }));
+                window.showModal('Asignar Transporte', [{ id: 'vehiculo', label: 'Transporte', type: 'select', options: opciones }], async (vals) => {
+                    if(vals.vehiculo) {
                         try {
-                            const [idVehiculo, nombreConductor] = values.vehiculo_data.split('|');
-                            // We need id_conductor, but getFlota only gives name. For demo, we use a mock id=1 if not available.
-                            const idConductor = 1; 
-                            
-                            // 1. Create Route
-                            const resRuta = await window.API.crearRuta({
-                                id_centro: 1,
-                                id_zona: 1,
-                                nombre: 'Ruta UI ' + Date.now().toString().slice(-4),
-                                fecha_planificada: new Date().toISOString().split('T')[0]
-                            });
-                            const idRuta = resRuta.id_ruta;
-
-                            // 2. Add Stop
-                            await window.API.agregarParada(idRuta, { id_pedido: idPedido, secuencia: 1 });
-
-                            // 3. Assign Route
-                            await window.API.asignarRuta(idRuta, { id_vehiculo: idVehiculo, id_conductor: idConductor });
-
-                            // 4. Start Route
-                            await window.API.iniciarRuta(idRuta);
-
-                            window.showToast("Vehículo asignado exitosamente y ruta iniciada.", 'success');
-                            window.navigate('operacion'); // Refresh
-                        } catch(err) {
-                            window.showToast("Error al asignar: " + err.message, 'error');
-                        }
+                            const [idVehiculo] = vals.vehiculo.split('|');
+                            // Create route and assign just for this order
+                            const resRuta = await window.API.crearRuta({ id_centro: 1, id_zona: 1, nombre: 'Ruta ' + selectedOp.id_pedido, fecha_planificada: new Date().toISOString() });
+                            await window.API.agregarParada(resRuta.id_ruta, { id_pedido: selectedOp.id_pedido, secuencia: 1 });
+                            await window.API.asignarRuta(resRuta.id_ruta, { id_vehiculo: parseInt(idVehiculo), id_conductor: 1 });
+                            await window.API.iniciarRuta(resRuta.id_ruta);
+                            window.showToast("Transporte asignado a la base de datos", "success");
+                            window.navigate('operacion');
+                        } catch(e) { window.showToast(e.message, "error"); }
                     }
                 });
-            } catch (err) {
-                window.showToast("Error cargando flota: " + err.message, 'error');
-            }
+            } catch (err) { window.showToast(err.message, 'error'); }
         };
 
         const tbody = document.getElementById('operaciones-table-body');
         if (tbody && operaciones) {
             tbody.innerHTML = operaciones.map(op => {
                 let statusClass = 'ontime';
-                let barColor = 'green';
                 let isPendiente = op.estado === 'PENDIENTE';
-                if(op.estado === 'En riesgo' || op.estado === 'EN_RIESGO') { statusClass = 'risk'; barColor = 'blue'; }
-                if(op.estado === 'Con retraso' || op.estado === 'ATRASADO') { statusClass = 'delayed'; barColor = 'blue'; }
-                if(op.estado === 'Entregado' || op.estado === 'ENTREGADO') { barColor = 'green'; statusClass = 'ontime'; }
-                if(isPendiente) { statusClass = 'delayed'; barColor = 'blue'; }
-
-                let accionesHtml = isPendiente 
-                    ? `<button class="btn btn-primary" style="padding: 4px 10px; font-size: 11px; border-radius: 6px;" onclick="window.asignarVehiculoModal(${op.id})">Asignar Vehículo</button>`
-                    : `<i class="ph-bold ph-dots-three" style="cursor: pointer; color: var(--text-muted);"></i>`;
+                if(op.estado === 'En riesgo' || op.estado === 'EN_RIESGO') statusClass = 'risk';
+                if(op.estado === 'Con retraso' || op.estado === 'ATRASADO') statusClass = 'delayed';
+                if(isPendiente) statusClass = 'delayed';
 
                 return `
-                    <tr>
-                        <td style="color: var(--primary); font-weight: 600;">${op.id}</td>
-                        <td>${op.pedido}</td>
+                    <tr style="cursor:pointer;" onclick="window.showOpDetail(${op.id}, '${op.destino}', '${op.vehiculo || 'Sin asignar'}', '${op.conductor || 'Sin conductor'}', '${op.estado}')">
+                        <td style="color: var(--primary); font-weight: 600;">#${op.pedido || op.id}</td>
                         <td>${op.destino}</td>
                         <td>${op.ventana}</td>
                         <td>${op.vehiculo || '<span style="color:var(--text-muted);">Sin asignar</span>'}</td>
-                        <td>${op.conductor || '<span style="color:var(--text-muted);">Sin conductor</span>'}</td>
                         <td><span class="status-badge ${statusClass}">${op.estado}</span></td>
-                        <td>
-                            <div class="progress-cell">
-                                <span style="width: 35px; font-size: 12px; font-weight: 600;">0%</span>
-                                <div class="progress-bar-bg">
-                                    <div class="progress-bar-fill ${barColor}" style="width: 0%;"></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td style="text-align: center;">${accionesHtml}</td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // Action binding for "Crear pedido"
-        const headerActionBtn = document.getElementById('header-action-btn');
-        if (headerActionBtn) {
-            headerActionBtn.onclick = () => {
-                window.showModal('Crear nuevo pedido', [
-                    { 
-                        id: 'comuna', 
-                        label: 'Comuna', 
-                        type: 'select',
-                        options: [
-                            { value: 'Las Condes', text: 'Las Condes' },
-                            { value: 'Providencia', text: 'Providencia' },
-                            { value: 'Santiago', text: 'Santiago' },
-                            { value: 'Ñuñoa', text: 'Ñuñoa' },
-                            { value: 'Vitacura', text: 'Vitacura' }
-                        ]
-                    },
-                    { id: 'direccion', label: 'Dirección (Calle y Número)', placeholder: 'Ej: Av. Apoquindo 1234' },
-                    { id: 'peso', label: 'Peso Total (kg)', value: '10' },
-                    { id: 'volumen', label: 'Volumen Total (m3)', value: '1.5' }
-                ], async (values) => {
-                    if (values.direccion && values.comuna && values.peso && values.volumen) {
-                        try {
-                            const res = await window.API.crearPedido({
-                                id_cliente: 1, // Fijo para UI por ahora
-                                id_ubicacion: 1, // Fijo para UI por ahora, mapea internamente a la dir
-                                codigo_pedido: 'PED-UI-' + Date.now().toString().slice(-4),
-                                fecha_requerida: new Date().toISOString(),
-                                ventana_horaria: "08:00 - 18:00",
-                                peso_total: parseFloat(values.peso),
-                                volumen_total: parseFloat(values.volumen)
-                            });
-                            window.showToast(res.mensaje + " ID: " + res.id_pedido, 'success');
-                            window.navigate('operacion'); // Refresh
-                        } catch(err) {
-                            window.showToast("Error: " + err.message, 'error');
-                        }
-                    }
-                });
-            };
-        }
+        window.showOpDetail = (id, destino, vehiculo, conductor, estado) => {
+            selectedOp = { id_pedido: id, destino, vehiculo, conductor, estado };
+            document.getElementById('op-detail-panel').style.display = 'block';
+            document.getElementById('det-id-pedido').textContent = 'Pedido #' + id;
+            document.getElementById('det-destino').textContent = destino;
+            document.getElementById('det-vehiculo').textContent = vehiculo;
+            document.getElementById('det-conductor').textContent = conductor;
+            document.getElementById('det-estado').textContent = estado;
+        };
 
     } catch (e) {
-        console.error("Error cargando operaciones:", e);
+        console.error("Error al cargar operaciones", e);
     }
 };

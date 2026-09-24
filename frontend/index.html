@@ -78,13 +78,30 @@
                         <span class="status-subtitle">Todos los servicios activos</span>
                     </div>
                 </div>
-                <div class="user-profile">
-                    <img src="https://ui-avatars.com/api/?name=Sebastian+Rain&background=E2E8F0&color=475569" alt="User Avatar" class="avatar">
+                <div class="user-profile" id="user-profile-btn" style="position: relative; cursor: pointer;">
+                    <img src="https://ui-avatars.com/api/?name=Usuario&background=E2E8F0&color=475569" id="sidebar-avatar" alt="User Avatar" class="avatar">
                     <div class="user-info">
-                        <span class="user-name">Sebastian Rain</span>
-                        <span class="user-company">TransAndes</span>
+                        <span class="user-name" id="sidebar-user-name">Usuario</span>
+                        <span class="user-company" id="sidebar-user-role">Rol</span>
                     </div>
                     <i class="ph ph-caret-down"></i>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="profile-dropdown" id="profile-dropdown" style="display: none;">
+                        <div class="dropdown-header">
+                            <strong>Opciones de Cuenta</strong>
+                        </div>
+                        <a href="#" class="dropdown-item" onclick="window.showModal('Editar Perfil', [{id: 'new_name', label: 'Nuevo Nombre', value: document.getElementById('sidebar-user-name').textContent}], (vals) => { if(vals.new_name){ document.getElementById('sidebar-user-name').textContent=vals.new_name; localStorage.setItem('poli_user', vals.new_name); document.getElementById('sidebar-avatar').src = 'https://ui-avatars.com/api/?name='+encodeURIComponent(vals.new_name)+'&background=E2E8F0&color=475569'; } })">
+                            <i class="ph ph-pencil-simple"></i> Editar Nombre
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="window.openSection('configuracion')">
+                            <i class="ph ph-gear"></i> Configuración
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item text-danger" onclick="if(confirm('¿Cerrar sesión?')) { localStorage.removeItem('poli_jwt'); window.location.href='login.html'; }">
+                            <i class="ph ph-sign-out"></i> Cerrar Sesión
+                        </a>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -170,17 +187,17 @@
     </div>
 
     <!-- Application Scripts -->
-    <script src="js/api.js?v=5"></script>
-    <script src="js/views/inicio.js?v=5"></script>
-    <script src="js/views/operacion.js?v=5"></script>
-    <script src="js/views/rutas.js?v=5"></script>
-    <script src="js/views/flota.js?v=5"></script>
-    <script src="js/views/vehiculos.js?v=5"></script>
-    <script src="js/views/alertas.js?v=5"></script>
-    <script src="js/views/reportes.js?v=5"></script>
-    <script src="js/views/despachador.js?v=5"></script>
-    <script src="js/views/conductor.js?v=5"></script>
-    <script src="js/views/configuracion.js?v=5"></script>
-    <script src="js/app.js?v=5"></script>
+    <script src="js/api.js?v=6"></script>
+    <script src="js/views/inicio.js?v=6"></script>
+    <script src="js/views/operacion.js?v=6"></script>
+    <script src="js/views/rutas.js?v=6"></script>
+    <script src="js/views/flota.js?v=6"></script>
+    <script src="js/views/vehiculos.js?v=6"></script>
+    <script src="js/views/alertas.js?v=6"></script>
+    <script src="js/views/reportes.js?v=6"></script>
+    <script src="js/views/despachador.js?v=6"></script>
+    <script src="js/views/conductor.js?v=6"></script>
+    <script src="js/views/configuracion.js?v=6"></script>
+    <script src="js/app.js?v=6"></script>
 </body>
 </html>

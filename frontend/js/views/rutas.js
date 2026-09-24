@@ -54,27 +54,27 @@ const renderRutas = () => {
             </div>
 
             <!-- Optimization Panel (Static for visual) -->
-            <div class="card detail-panel">
+            <div class="card detail-panel" id="ruta-detail-panel" style="display: none;">
                 <div class="detail-header">
                     <h3 class="card-title">Optimización de ruta</h3>
-                    <i class="ph ph-x" style="font-size: 20px; color: var(--text-muted); cursor: pointer;"></i>
+                    <i class="ph ph-x" style="font-size: 20px; color: var(--text-muted); cursor: pointer;" onclick="document.getElementById('ruta-detail-panel').style.display='none'"></i>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div class="id-icon" style="width: 40px; height: 40px; font-size: 20px;"><i class="ph-fill ph-cube"></i></div>
                         <div>
-                            <h4 style="font-size: 16px; font-weight: 700;">Ruta R3 <span style="font-weight: 400; color: var(--text-muted);">· Sector Oriente</span></h4>
+                            <h4 style="font-size: 16px; font-weight: 700;" id="det-ruta-nombre">Ruta R3 <span style="font-weight: 400; color: var(--text-muted);" id="det-ruta-zona"></span></h4>
                         </div>
                     </div>
-                    <div class="status-badge ontime">Activa</div>
+                    <div class="status-badge ontime" id="det-ruta-estado">Activa</div>
                 </div>
 
                 <div style="display: flex; gap: 16px; margin-bottom: 24px; font-size: 13px; color: var(--text-main); font-weight: 500;">
-                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-truck" style="color: var(--primary);"></i> V-207</div>
-                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-user" style="color: var(--primary);"></i> M. Silva</div>
-                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-map-pin" style="color: var(--primary);"></i> 18</div>
-                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-navigation-arrow" style="color: var(--primary);"></i> 64 km</div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-truck" style="color: var(--primary);"></i> <span id="det-ruta-vehiculo"></span></div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-user" style="color: var(--primary);"></i> <span id="det-ruta-conductor"></span></div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-map-pin" style="color: var(--primary);"></i> <span id="det-ruta-paradas"></span></div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-navigation-arrow" style="color: var(--primary);"></i> <span id="det-ruta-distancia"></span></div>
                 </div>
 
                 <div style="background-color: #F8FAFC; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
@@ -107,8 +107,8 @@ const renderRutas = () => {
                 </div>
 
                 <div style="display: flex; gap: 12px;">
-                    <button class="btn btn-primary" style="flex: 1;"><i class="ph-fill ph-sparkle"></i> Aplicar optimización</button>
-                    <button class="btn" style="flex: 1; border: 1px solid var(--primary); color: var(--primary); background: white;">Ver detalle</button>
+                    <button id="btn-aplicar-opt" class="btn btn-primary" style="flex: 1;"><i class="ph-fill ph-sparkle"></i> Aplicar optimización</button>
+                    <button id="btn-ver-detalles" class="btn" style="flex: 1; border: 1px solid var(--primary); color: var(--primary); background: white;">Ver detalle</button>
                 </div>
             </div>
         </div>
@@ -173,7 +173,7 @@ const initRutas = async () => {
                 }
 
                 return `
-                    <tr>
+                    <tr style="cursor:pointer;" onclick="window.showRutaDetail(${r.id}, '${r.nombre}', '${r.zona}', '${r.estado}', '${r.vehiculo || 'No asig.'}', '${r.conductor || 'No asig.'}', ${r.paradas}, ${r.distancia})">
                         <td style="font-weight: 600;">${r.id}</td>
                         <td>${r.nombre}</td>
                         <td>${r.zona}</td>
@@ -195,6 +195,48 @@ const initRutas = async () => {
                     </tr>
                 `;
             }).join('');
+        }
+
+        
+        let selectedRutaId = null;
+        window.showRutaDetail = (id, nombre, zona, estado, vehiculo, conductor, paradas, distancia) => {
+            selectedRutaId = id;
+            document.getElementById('ruta-detail-panel').style.display = 'block';
+            document.getElementById('det-ruta-nombre').innerHTML = nombre + ' <span style="font-weight: 400; color: var(--text-muted);">· ' + zona + '</span>';
+            document.getElementById('det-ruta-estado').textContent = estado;
+            document.getElementById('det-ruta-vehiculo').textContent = vehiculo;
+            document.getElementById('det-ruta-conductor').textContent = conductor;
+            document.getElementById('det-ruta-paradas').textContent = paradas;
+            document.getElementById('det-ruta-distancia').textContent = distancia + ' km';
+        };
+
+        const btnOpt = document.getElementById('btn-aplicar-opt');
+        if(btnOpt) {
+            btnOpt.onclick = async () => {
+                if(!selectedRutaId) return;
+                try {
+                    await window.API.decidirOptimizacion(selectedRutaId, { decision: 'APROBADA' });
+                    window.showToast('Optimización aplicada con éxito en la base de datos.', 'success');
+                    window.refreshRutas();
+                } catch(e) { window.showToast(e.message, 'error'); }
+            };
+        }
+
+        const btnDet = document.getElementById('btn-ver-detalles');
+        if(btnDet) {
+            btnDet.onclick = async () => {
+                if(!selectedRutaId) return;
+                try {
+                    const detalles = await window.API.consultarRuta(selectedRutaId);
+                    window.showModal('Detalles Reales de Ruta #' + selectedRutaId, [
+                        {id: 'info', label: 'Datos JSON', type: 'hidden'}
+                    ], () => {});
+                    const modalBody = document.querySelector('.modal-body');
+                    if(modalBody) {
+                        modalBody.innerHTML = '<pre style="background:#f8f9fa;padding:10px;border-radius:4px;font-size:12px;overflow-x:auto;">' + JSON.stringify(detalles, null, 2) + '</pre>';
+                    }
+                } catch(e) { window.showToast('Error cargando detalles: ' + e.message, 'error'); }
+            };
         }
 
         // Action binding for "Crear ruta"

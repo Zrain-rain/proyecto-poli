@@ -28,16 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
         companyDisplay.textContent = savedConfig.empresa;
     }
 
-    // Logout functionality
-    const userProfile = document.querySelector('.user-profile');
-    if (userProfile) {
-        userProfile.style.cursor = 'pointer';
-        userProfile.addEventListener('click', () => {
-            if(confirm('¿Desea cerrar sesión?')) {
-                localStorage.removeItem('poli_jwt');
-                localStorage.removeItem('poli_role');
-                localStorage.removeItem('poli_user');
-                window.location.href = 'login.html';
+    // Profile dropdown toggle
+    const userProfile = document.getElementById('user-profile-btn');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    
+    if (userProfile && profileDropdown) {
+        userProfile.addEventListener('click', (e) => {
+            // Prevent toggling if clicked on dropdown itself
+            if(e.target.closest('.profile-dropdown')) return;
+            const isVisible = profileDropdown.style.display === 'flex';
+            profileDropdown.style.display = isVisible ? 'none' : 'flex';
+        });
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!userProfile.contains(e.target)) {
+                profileDropdown.style.display = 'none';
             }
         });
     }
