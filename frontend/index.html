@@ -60,7 +60,7 @@
                     <i class="ph ph-chart-bar"></i>
                     <span>Reportes</span>
                 </a>
-                <a href="#" class="nav-item">
+                <a href="#" class="nav-item" data-view="configuracion" id="nav-configuracion">
                     <i class="ph ph-gear"></i>
                     <span>Configuración</span>
                 </a>
@@ -126,19 +126,33 @@
         </main>
     </div>
 
+    <!-- Global Action Modal (Nueva Operación / Crear Ruta) -->
+    <div id="action-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-title">Nueva Operación</h3>
+                <button class="modal-close-btn" id="modal-close-btn"><i class="ph ph-x"></i></button>
+            </div>
+            <div id="modal-body">
+                <!-- Injected dynamically -->
+            </div>
+        </div>
+    </div>
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Application Scripts -->
-    <script src="js/api.js"></script>
-    <script src="js/views/inicio.js"></script>
-    <script src="js/views/operacion.js"></script>
-    <script src="js/views/rutas.js"></script>
-    <script src="js/views/flota.js"></script>
-    <script src="js/views/vehiculos.js"></script>
-    <script src="js/views/alertas.js"></script>
-    <script src="js/views/reportes.js"></script>
-    <script src="js/views/despachador.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/api.js?v=5"></script>
+    <script src="js/views/inicio.js?v=5"></script>
+    <script src="js/views/operacion.js?v=5"></script>
+    <script src="js/views/rutas.js?v=5"></script>
+    <script src="js/views/flota.js?v=5"></script>
+    <script src="js/views/vehiculos.js?v=5"></script>
+    <script src="js/views/alertas.js?v=5"></script>
+    <script src="js/views/reportes.js?v=5"></script>
+    <script src="js/views/despachador.js?v=5"></script>
+    <script src="js/views/configuracion.js?v=5"></script>
+    <script src="js/app.js?v=5"></script>
 </body>
 </html>

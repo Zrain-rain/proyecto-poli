@@ -172,9 +172,84 @@ app.get('/api/v1/data/rutas', async (c) => {
 
 // Crear Operación (Solo User, Admin)
 app.post('/api/v1/data/operaciones', requireRole(['admin', 'user']), async (c) => {
-  const body = await c.req.json()
-  // Lógica de inserción... (simplificado para demo)
-  return c.json({ message: 'Operación creada', data: body }, 201)
+  try {
+    const body = await c.req.json()
+    const { id, pedido, destino, ventana, vehiculo, conductor, estado, avance } = body
+
+    if (!id || !pedido || !destino || !ventana) {
+      return c.json({ error: 'Faltan campos obligatorios: id, pedido, destino, ventana' }, 400)
+    }
+
+    // Buscar route_id asociado al vehiculo indicado (si existe)
+    let routeId = null
+    if (vehiculo) {
+      const routeResult = await c.env.DB.prepare(
+        `SELECT r.id FROM routes r WHERE r.vehicle_id = ? LIMIT 1`
+      ).bind(vehiculo).first()
+      if (routeResult) routeId = routeResult.id
+    }
+
+    // Insertar en la tabla orders
+    await c.env.DB.prepare(
+      `INSERT INTO orders (id, pedido, destino, ventana_horaria, route_id, estado, avance, fecha)
+       VALUES (?, ?, ?, ?, ?, ?, ?, date('now', 'localtime'))`
+    ).bind(
+      id,
+      pedido,
+      destino,
+      ventana,
+      routeId,
+      estado || 'A tiempo',
+      avance ?? 0
+    ).run()
+
+    return c.json({ message: 'Operación creada exitosamente', id }, 201)
+  } catch (err) {
+    console.error('Error creando operación:', err)
+    return c.json({ error: 'Error interno al crear la operación', detail: err.message }, 500)
+  }
+})
+
+// Crear Ruta (Solo User, Admin)
+app.post('/api/v1/data/rutas', requireRole(['admin', 'user']), async (c) => {
+  try {
+    const body = await c.req.json()
+    const { id, nombre, zona, estado, vehiculo, conductor, paradas, distancia, tiempoEstimado, avance } = body
+
+    if (!id || !nombre) {
+      return c.json({ error: 'Faltan campos obligatorios: id, nombre' }, 400)
+    }
+
+    // Buscar driver_id a partir del nombre del conductor
+    let driverId = null
+    if (conductor) {
+      const driverResult = await c.env.DB.prepare(
+        `SELECT id FROM drivers WHERE nombre = ? LIMIT 1`
+      ).bind(conductor).first()
+      if (driverResult) driverId = driverResult.id
+    }
+
+    await c.env.DB.prepare(
+      `INSERT INTO routes (id, nombre, zona, estado, vehicle_id, driver_id, paradas, distancia, tiempo_estimado, avance)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      id,
+      nombre,
+      zona || 'Centro',
+      estado || 'Planificada',
+      vehiculo || null,
+      driverId,
+      paradas ?? 1,
+      distancia ?? 0,
+      tiempoEstimado || 'N/A',
+      avance ?? 0
+    ).run()
+
+    return c.json({ message: 'Ruta creada exitosamente', id }, 201)
+  } catch (err) {
+    console.error('Error creando ruta:', err)
+    return c.json({ error: 'Error interno al crear la ruta', detail: err.message }, 500)
+  }
 })
 
 // ==========================================

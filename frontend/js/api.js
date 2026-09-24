@@ -53,6 +53,12 @@ window.API = {
     getOperaciones: async () => {
         return await fetchAPI('/data/operaciones');
     },
+    createOperacion: async (operacionData) => {
+        return await fetchAPI('/data/operaciones', {
+            method: 'POST',
+            body: JSON.stringify(operacionData)
+        });
+    },
     updateOperacionEstado: async (id, estado) => {
         return await fetchAPI(`/data/operaciones/${id}/estado`, {
             method: 'PUT',
@@ -61,6 +67,12 @@ window.API = {
     },
     getRutas: async () => {
         return await fetchAPI('/data/rutas');
+    },
+    createRuta: async (rutaData) => {
+        return await fetchAPI('/data/rutas', {
+            method: 'POST',
+            body: JSON.stringify(rutaData)
+        });
     },
     getFlota: async () => {
         return await fetchAPI('/data/flota');
