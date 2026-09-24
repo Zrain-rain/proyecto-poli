@@ -123,40 +123,39 @@ const initReportes = async () => {
             `;
         }
 
-        // 3. Tabla de Desempeño
+        // 3. Tabla de Desempeño (Query 5 OTIF Real)
         const tbody = document.getElementById('reportes-table-body');
         if (tbody) {
-            // Agrupar por ventana horaria
-            const ventanas = {};
-            operaciones.forEach(op => {
-                const v = op.ventana || op.ventana_horaria;
-                if (!v) return;
-                if (!ventanas[v]) ventanas[v] = { total: 0, ok: 0, fail: 0 };
-                
-                ventanas[v].total++;
-                if (op.estado === 'A tiempo' || op.estado === 'Entregada') ventanas[v].ok++;
-                else ventanas[v].fail++;
-            });
+            try {
+                const reportesOTIF = await window.API.getReportesOTIF();
+                if (reportesOTIF && reportesOTIF.length > 0) {
+                    const rows = reportesOTIF.map(r => {
+                        const total = r.TotalParadas || 0;
+                        const ok = r.EntregasExitosas || 0;
+                        const fail = r.EntregasFallidas || 0;
+                        const porc = total > 0 ? Math.round((ok / total) * 100) : 0;
+                        
+                        let color = 'var(--success)';
+                        if (porc < 80) color = 'var(--warning)';
+                        if (porc < 50) color = 'var(--danger)';
 
-            const rows = Object.keys(ventanas).sort().map(v => {
-                const data = ventanas[v];
-                const porc = Math.round((data.ok / data.total) * 100);
-                let color = 'var(--success)';
-                if (porc < 80) color = 'var(--warning)';
-                if (porc < 50) color = 'var(--danger)';
-
-                return `
-                    <tr>
-                        <td style="font-weight: 600;">${v}</td>
-                        <td>${data.total}</td>
-                        <td>${data.ok}</td>
-                        <td>${data.fail}</td>
-                        <td><span style="color: ${color}; font-weight: 700;">${porc}%</span></td>
-                    </tr>
-                `;
-            }).join('');
-            
-            tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align:center;">No hay datos para analizar</td></tr>';
+                        return `
+                            <tr>
+                                <td style="font-weight: 600;">Ruta: ${r.Ruta}</td>
+                                <td>${total} Paradas</td>
+                                <td>${ok} Exitosas</td>
+                                <td>${fail} Fallidas</td>
+                                <td><span style="color: ${color}; font-weight: 700;">${porc}% OTIF</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+                    tbody.innerHTML = rows;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay datos para analizar</td></tr>';
+                }
+            } catch (err) {
+                console.error("Error al cargar OTIF real", err);
+            }
         }
 
     } catch (e) {

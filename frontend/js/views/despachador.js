@@ -124,28 +124,33 @@ const initDespachador = async () => {
             }
 
             listContainer.innerHTML = operaciones.map(op => {
-                const isDelivered = op.estado === 'Entregado';
+                const isDelivered = op.estado === 'ENTREGADO' || op.estado === 'Entregado';
+                const isFailed = op.estado === 'FALLIDO';
+                
                 return `
-                    <div class="order-card" style="${isDelivered ? 'opacity: 0.7;' : ''}">
+                    <div class="order-card" style="${isDelivered || isFailed ? 'opacity: 0.7;' : ''}">
                         <div class="order-header">
                             <div class="order-id">#${op.id}</div>
-                            <div class="status-badge ${isDelivered ? 'ontime' : (op.estado === 'Con retraso' ? 'delayed' : 'outline')}">${op.estado}</div>
+                            <div class="status-badge ${isDelivered ? 'ontime' : (isFailed ? 'risk' : 'outline')}">${op.estado}</div>
                         </div>
                         <div class="order-details">
                             <p><i class="ph-fill ph-map-pin" style="color: var(--primary);"></i> <strong>Destino:</strong> ${op.destino}</p>
                             <p><i class="ph-fill ph-clock" style="color: var(--primary);"></i> <strong>Ventana:</strong> ${op.ventana}</p>
                         </div>
-                        <div class="order-actions">
-                            ${!isDelivered ? `
-                                <button class="btn-huge btn-delay" onclick="window.updateOrderStatus('${op.id}', 'Con retraso')">
-                                    <i class="ph-fill ph-warning"></i> Retraso
-                                </button>
-                                <button class="btn-huge btn-deliver" onclick="window.updateOrderStatus('${op.id}', 'Entregado')">
+                        <div class="order-actions" style="flex-wrap: wrap;">
+                            ${!(isDelivered || isFailed) ? `
+                                <button class="btn-huge btn-deliver" onclick="window.updateOrderStatus('${op.id}', 'ENTREGADO')" style="flex: 1 1 100%;">
                                     <i class="ph-bold ph-check"></i> Entregado
                                 </button>
+                                <button class="btn-huge btn-delay" onclick="window.updateOrderStatus('${op.id}', 'FALLIDO')" style="flex: 1;">
+                                    <i class="ph-fill ph-x"></i> Fallido
+                                </button>
+                                <button class="btn-huge" onclick="window.registrarIncidencia('${op.id}')" style="flex: 1; background:#fef2f2; color:#b91c1c; border:1px solid #fca5a5;">
+                                    <i class="ph-fill ph-warning"></i> Reportar
+                                </button>
                             ` : `
-                                <div style="width: 100%; text-align: center; color: var(--success); font-weight: 700; padding: 10px;">
-                                    <i class="ph-fill ph-check-circle"></i> Operación finalizada
+                                <div style="width: 100%; text-align: center; color: var(--text-muted); font-weight: 700; padding: 10px;">
+                                    Operación finalizada
                                 </div>
                             `}
                         </div>
@@ -158,15 +163,50 @@ const initDespachador = async () => {
     }
 };
 
-window.updateOrderStatus = async (id, estado) => {
-    if(confirm(`¿Confirmas marcar el pedido como "${estado}"?`)) {
-        try {
-            await window.API.updateOperacionEstado(id, estado);
-            if(window.navigate) {
-                window.navigate('despachador'); // Refresca la vista
+window.updateOrderStatus = (id, estado) => {
+    if (estado === 'FALLIDO') {
+        window.showModal('Reportar Fallo', [
+            { id: 'motivo', label: 'Indique el motivo del fallo' }
+        ], async (values) => {
+            if(!values.motivo) return;
+            try {
+                await window.API.updateOperacionEstado(id, estado, values.motivo);
+                window.showToast("Estado actualizado correctamente.", 'success');
+                if(window.navigate) window.navigate('despachador');
+            } catch(e) {
+                window.showToast("Ocurrió un error al actualizar: " + e.message, 'error');
             }
-        } catch(e) {
-            alert("Ocurrió un error al actualizar");
-        }
+        });
+    } else {
+        window.showModal('Confirmar', [
+            { id: 'confirm', label: `¿Confirmas marcar el pedido como "${estado}"?`, type: 'hidden' }
+        ], async () => {
+            try {
+                await window.API.updateOperacionEstado(id, estado, "Actualizado desde UI");
+                window.showToast("Estado actualizado correctamente.", 'success');
+                if(window.navigate) window.navigate('despachador');
+            } catch(e) {
+                window.showToast("Ocurrió un error al actualizar: " + e.message, 'error');
+            }
+        });
     }
+};
+
+window.registrarIncidencia = (id_pedido) => {
+    window.showModal('Registrar Incidencia', [
+        { id: 'desc', label: `Describa la incidencia para el pedido ${id_pedido}` }
+    ], async (values) => {
+        if (!values.desc) return;
+        try {
+            await window.API.registrarIncidencia({
+                id_ruta: 1, // Fix temporal
+                id_parada: id_pedido,
+                tipo: 'OPERACIONAL',
+                descripcion: values.desc
+            });
+            window.showToast("Incidencia registrada.", 'success');
+        } catch(e) {
+            window.showToast("Error: " + e.message, 'error');
+        }
+    });
 };

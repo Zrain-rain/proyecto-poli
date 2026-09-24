@@ -22,3 +22,7 @@ La arquitectura se ha dividido de forma estricta para desacoplar responsabilidad
 4. El frontend adjunta el JWT en el Header `Authorization: Bearer <token>` para peticiones subsecuentes.
 5. El middleware global en `backend/` intercepta, verifica la firma del JWT y extrae el rol.
 6. Guardias de ruta (`requireRole(['admin'])`) bloquean o permiten la ejecución del controlador.
+
+## Arquitectura de UI y Despliegue
+- **Invalidación de caché:** Los scripts del Frontend en `index.html` utilizan query parameters de versión (e.g. `?v=5`) para forzar refrescos inmediatos en los navegadores de los clientes tras cada despliegue.
+- **Capa de Abstracción API:** El archivo `frontend/js/api.js` abstrae las llamadas al backend, proveyendo alias de compatibilidad (`createOperacion`, `createRuta`) para mantener la interoperabilidad de componentes antiguos de la UI con las nuevas rutas robustas del servicio logístico (`PoliServices`).

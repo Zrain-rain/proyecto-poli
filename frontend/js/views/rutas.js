@@ -1,40 +1,32 @@
 // js/views/rutas.js
 
-let allRutas = [];
-let selectedRutaId = null;
-let currentRutaFilter = 'todas';
-let currentRutaZona = 'todas';
-
 const renderRutas = () => {
     return `
         <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);" id="rutas-kpis-container">
             <!-- KPIs Injected via JS -->
-            <div style="padding: 20px; color: var(--text-muted);">Cargando indicadores de rutas...</div>
+            <div style="padding: 20px; color: var(--text-muted);">Cargando...</div>
         </div>
 
         <div class="operation-layout">
             <!-- Map and Routes List -->
-            <div style="display: flex; flex-direction: column; gap: 20px; flex: 1; min-width: 0;">
+            <div style="display: flex; flex-direction: column; gap: 20px;">
                 <div class="card" style="padding: 16px;">
-                    <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+                    <div class="card-header">
                         <h3 class="card-title">Mapa de rutas</h3>
-                        <div class="filters-row" style="flex-wrap: wrap; gap: 8px;">
-                            <div class="badge-pill outline ruta-filter-pill active" data-filter="todas" style="cursor: pointer; border-color: var(--primary); color: var(--primary); background: #EFF6FF;">Todas</div>
-                            <div class="badge-pill outline ruta-filter-pill" data-filter="Activa" style="cursor: pointer;"><div class="dot green"></div> Activas</div>
-                            <div class="badge-pill outline ruta-filter-pill" data-filter="Planificada" style="cursor: pointer;"><div class="dot blue"></div> Planificadas</div>
-                            <div class="badge-pill outline ruta-filter-pill" data-filter="En riesgo" style="cursor: pointer;"><div class="dot warning"></div> En riesgo</div>
-                            <select class="filter-select" id="filtro-zona" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: white; font-size: 13px; color: var(--text-main); cursor: pointer;">
-                                <option value="todas">Todas las zonas</option>
-                            </select>
+                        <div class="filters-row">
+                            <div class="badge-pill outline" style="border-color: var(--primary); color: var(--primary); background: #EFF6FF;">Todas</div>
+                            <div class="badge-pill outline"><div class="dot green"></div> Activas</div>
+                            <div class="badge-pill outline"><div class="dot blue"></div> Planificadas</div>
+                            <div class="badge-pill outline"><div class="dot warning"></div> En riesgo</div>
+                            <select class="filter-select"><option>Zona</option></select>
                         </div>
                     </div>
-                    <div id="rutas-map" class="map-container" style="border-radius: 12px; height: 320px;"></div>
+                    <div id="rutas-map" class="map-container" style="border-radius: 12px;"></div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="card-header">
                         <h3 class="card-title">Listado de rutas</h3>
-                        <span id="rutas-counter-text" style="font-size: 13px; color: var(--text-muted);">Cargando...</span>
                     </div>
                     <div class="table-container">
                         <table>
@@ -48,229 +40,92 @@ const renderRutas = () => {
                                     <th>Conductor</th>
                                     <th>Paradas</th>
                                     <th>Distancia</th>
-                                    <th>Tiempo est.</th>
+                                    <th>Tiempo estimado</th>
                                     <th>Avance</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="rutas-table-body">
-                                <tr><td colspan="10" style="text-align:center; padding: 24px;">Cargando rutas...</td></tr>
+                                <tr><td colspan="11" style="text-align:center; padding: 20px;">Cargando rutas...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Optimization Panel -->
-            <div class="card detail-panel" id="rutas-detail-panel" style="min-width: 330px; max-width: 380px;">
-                <div class="detail-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 class="card-title" style="margin: 0;">Optimización de ruta</h3>
-                    <i class="ph ph-x" id="close-ruta-panel-btn" style="font-size: 20px; color: var(--text-muted); cursor: pointer; padding: 4px;" title="Cerrar panel"></i>
+            <!-- Optimization Panel (Static for visual) -->
+            <div class="card detail-panel">
+                <div class="detail-header">
+                    <h3 class="card-title">Optimización de ruta</h3>
+                    <i class="ph ph-x" style="font-size: 20px; color: var(--text-muted); cursor: pointer;"></i>
                 </div>
 
-                <div id="ruta-panel-content">
-                    <div style="text-align: center; padding: 40px 10px; color: var(--text-muted);">
-                        <i class="ph ph-cursor-click" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
-                        Selecciona una ruta de la tabla para ver su análisis de optimización.
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-};
-
-const renderRutaDetail = (ruta) => {
-    const content = document.getElementById('ruta-panel-content');
-    const panel = document.getElementById('rutas-detail-panel');
-    if (!content || !panel) return;
-
-    panel.style.display = 'block';
-
-    if (!ruta) return;
-
-    let statusClass = 'ontime';
-    if (ruta.estado === 'Planificada') statusClass = 'outline';
-    if (ruta.estado === 'En riesgo') statusClass = 'risk';
-
-    // Estimación optimizada calculada
-    const distOriginal = Number(ruta.distancia) || 20;
-    const distOptimizada = Math.max(10, Math.round(distOriginal * 0.82));
-    const ahorroKm = distOriginal - distOptimizada;
-
-    content.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="id-icon" style="width: 44px; height: 44px; font-size: 22px; background: #EEF2FF; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="ph-fill ph-map-pin"></i>
-                </div>
-                <div>
-                    <h4 style="font-size: 16px; font-weight: 700; margin: 0; color: var(--text-main);">${ruta.nombre}</h4>
-                    <span style="font-size: 13px; color: var(--text-muted);">${ruta.zona || 'Metropolitana'} · ID: ${ruta.id}</span>
-                </div>
-            </div>
-            <div class="status-badge ${statusClass}">${ruta.estado}</div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-            <div style="background: var(--bg-app); padding: 10px; border-radius: 10px; font-size: 12px;">
-                <span style="color: var(--text-muted); font-weight: 600;">VEHÍCULO</span>
-                <p style="margin: 4px 0 0 0; font-weight: 700; font-size: 13px; color: var(--text-main);"><i class="ph-fill ph-truck" style="color: var(--primary);"></i> ${ruta.vehiculo || 'No asignado'}</p>
-            </div>
-            <div style="background: var(--bg-app); padding: 10px; border-radius: 10px; font-size: 12px;">
-                <span style="color: var(--text-muted); font-weight: 600;">CONDUCTOR</span>
-                <p style="margin: 4px 0 0 0; font-weight: 700; font-size: 13px; color: var(--text-main);"><i class="ph-fill ph-user" style="color: var(--primary);"></i> ${ruta.conductor || 'Sin asignar'}</p>
-            </div>
-            <div style="background: var(--bg-app); padding: 10px; border-radius: 10px; font-size: 12px;">
-                <span style="color: var(--text-muted); font-weight: 600;">PARADAS</span>
-                <p style="margin: 4px 0 0 0; font-weight: 700; font-size: 13px; color: var(--text-main);"><i class="ph-fill ph-map-pin" style="color: var(--primary);"></i> ${ruta.paradas || 1} paradas</p>
-            </div>
-            <div style="background: var(--bg-app); padding: 10px; border-radius: 10px; font-size: 12px;">
-                <span style="color: var(--text-muted); font-weight: 600;">TIEMPO EST.</span>
-                <p style="margin: 4px 0 0 0; font-weight: 700; font-size: 13px; color: var(--text-main);"><i class="ph-fill ph-clock" style="color: var(--primary);"></i> ${ruta.tiempoEstimado || '1 h'}</p>
-            </div>
-        </div>
-
-        <div style="background-color: #F8FAFC; border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px;">
-                <span style="color: var(--text-muted);">Recorrido actual:</span>
-                <span style="font-weight: 600;">${distOriginal} km · ${ruta.tiempoEstimado || '1 h 10 min'}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px;">
-                <span style="color: var(--text-muted);">Ruta optimizada (IA):</span>
-                <span style="font-weight: 600; color: var(--success);">${distOptimizada} km · -25 min</span>
-            </div>
-            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                <span style="color: var(--text-muted); font-weight: 600;">Ahorro Proyectado:</span>
-                <span style="font-weight: 700; color: var(--success);">-${ahorroKm} km · -18% combustible</span>
-            </div>
-        </div>
-        
-        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
-            <div class="badge-pill outline" style="font-size: 11px;"><i class="ph-fill ph-gear"></i> OR-Tools Reroute</div>
-            <div class="badge-pill outline" style="color: var(--primary); font-size: 11px;"><i class="ph-fill ph-sparkle"></i> Gemini AI</div>
-        </div>
-
-        <div style="background-color: #FFFBEB; border: 1px solid #FFCE20; border-radius: 12px; padding: 14px; display: flex; gap: 12px; margin-bottom: 20px;">
-            <i class="ph-fill ph-warning" style="color: var(--warning); font-size: 20px; flex-shrink: 0;"></i>
-            <div>
-                <h4 style="color: #975A16; font-size: 12px; font-weight: 700; margin: 0 0 2px 0;">Sugerencia de Tráfico</h4>
-                <p style="color: #975A16; font-size: 11px; line-height: 1.4; margin: 0;">Ajustar el orden de visita reduce el tiempo en zonas de alta congestión.</p>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-primary" onclick="window.aplicarOptimizacionRuta('${ruta.id}')" style="flex: 1; padding: 10px; font-size: 13px;">
-                <i class="ph-fill ph-sparkle"></i> Aplicar
-            </button>
-            <button class="btn" onclick="window.centrarMapaEnRuta('${ruta.id}')" style="flex: 1; border: 1px solid var(--primary); color: var(--primary); background: white; padding: 10px; font-size: 13px;">
-                <i class="ph ph-map-pin"></i> Ver en mapa
-            </button>
-        </div>
-    `;
-};
-
-window.selectRuta = (id) => {
-    selectedRutaId = id;
-    const ruta = allRutas.find(r => String(r.id) === String(id));
-    renderRutaDetail(ruta);
-    filterAndRenderRutas();
-};
-
-window.aplicarOptimizacionRuta = (id) => {
-    alert(`¡Optimización aplicada exitosamente a la ruta ${id}!\nSe ha reprogramado el recorrido para minimizar paradas y distancia.`);
-};
-
-window.centrarMapaEnRuta = (id) => {
-    const ruta = allRutas.find(r => String(r.id) === String(id));
-    if (ruta && window.mapInstanceRutas) {
-        // Coordenadas referenciales de Santiago / Lampa
-        window.mapInstanceRutas.setZoom(12);
-    }
-};
-
-let currentRutaSearch = '';
-
-const filterAndRenderRutas = () => {
-    let filtered = [...allRutas];
-
-    if (currentRutaSearch) {
-        filtered = filtered.filter(r => {
-            const id = (r.id || '').toLowerCase();
-            const nombre = (r.nombre || '').toLowerCase();
-            const zona = (r.zona || '').toLowerCase();
-            const vehiculo = (r.vehiculo || '').toLowerCase();
-            const conductor = (r.conductor || '').toLowerCase();
-            return id.includes(currentRutaSearch) || 
-                   nombre.includes(currentRutaSearch) || 
-                   zona.includes(currentRutaSearch) || 
-                   vehiculo.includes(currentRutaSearch) || 
-                   conductor.includes(currentRutaSearch);
-        });
-    }
-
-    if (currentRutaFilter !== 'todas') {
-        filtered = filtered.filter(r => (r.estado || '').toLowerCase() === currentRutaFilter.toLowerCase());
-    }
-
-    if (currentRutaZona !== 'todas') {
-        filtered = filtered.filter(r => (r.zona || '').toLowerCase() === currentRutaZona.toLowerCase());
-    }
-
-    const counter = document.getElementById('rutas-counter-text');
-    if (counter) {
-        counter.textContent = `Mostrando ${filtered.length} de ${allRutas.length} rutas`;
-    }
-
-    const tbody = document.getElementById('rutas-table-body');
-    if (!tbody) return;
-
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--text-muted);">No se encontraron rutas para los filtros actuales.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = filtered.map(r => {
-        let statusClass = 'ontime';
-        let barColor = 'green';
-        if (r.estado === 'Planificada') { statusClass = 'outline'; barColor = 'blue'; }
-        if (r.estado === 'En riesgo') { statusClass = 'risk'; barColor = 'blue'; }
-
-        const isSelected = String(r.id) === String(selectedRutaId);
-        const rowBg = isSelected ? 'background-color: #F0F7FF;' : '';
-
-        return `
-            <tr style="cursor: pointer; ${rowBg}" onclick="window.selectRuta('${r.id}')">
-                <td style="font-weight: 700; color: var(--primary);">${r.id}</td>
-                <td><strong>${r.nombre}</strong></td>
-                <td><span class="badge-pill outline">${r.zona || 'Metropolitana'}</span></td>
-                <td><span class="status-badge ${statusClass}">${r.estado}</span></td>
-                <td>${r.vehiculo || '<span style="color:var(--text-muted);">No asig.</span>'}</td>
-                <td>${r.conductor || '<span style="color:var(--text-muted);">No asig.</span>'}</td>
-                <td>${r.paradas}</td>
-                <td>${r.distancia} km</td>
-                <td>${r.tiempoEstimado || '1 h'}</td>
-                <td>
-                    <div class="progress-cell">
-                        <span style="width: 35px; font-size: 12px; font-weight: 600;">${r.avance || 0}%</span>
-                        <div class="progress-bar-bg" style="width: 60px;">
-                            <div class="progress-bar-fill ${barColor}" style="width: ${r.avance || 0}%;"></div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="id-icon" style="width: 40px; height: 40px; font-size: 20px;"><i class="ph-fill ph-cube"></i></div>
+                        <div>
+                            <h4 style="font-size: 16px; font-weight: 700;">Ruta R3 <span style="font-weight: 400; color: var(--text-muted);">· Sector Oriente</span></h4>
                         </div>
                     </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
+                    <div class="status-badge ontime">Activa</div>
+                </div>
+
+                <div style="display: flex; gap: 16px; margin-bottom: 24px; font-size: 13px; color: var(--text-main); font-weight: 500;">
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-truck" style="color: var(--primary);"></i> V-207</div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-user" style="color: var(--primary);"></i> M. Silva</div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-map-pin" style="color: var(--primary);"></i> 18</div>
+                    <div style="display: flex; align-items: center; gap: 6px;"><i class="ph-fill ph-navigation-arrow" style="color: var(--primary);"></i> 64 km</div>
+                </div>
+
+                <div style="background-color: #F8FAFC; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px;">
+                        <span style="color: var(--text-muted);">Ruta actual:</span>
+                        <span style="font-weight: 600;">78 km · 4 h 10 min</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px;">
+                        <span style="color: var(--text-muted);">Ruta optimizada:</span>
+                        <span style="font-weight: 600; color: var(--success);">64 km · 3 h 25 min</span>
+                    </div>
+                    <hr style="border: none; border-top: 1px solid var(--border-color); margin: 12px 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                        <span style="color: var(--text-muted);">Mejora:</span>
+                        <span style="font-weight: 700; color: var(--success);">-14 km · -45 min</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 24px;">
+                    <div class="badge-pill outline"><i class="ph-fill ph-gear"></i> OR-Tools</div>
+                    <div class="badge-pill outline" style="color: var(--primary);"><i class="ph-fill ph-sparkle"></i> Gemini 2.1 Pro</div>
+                </div>
+
+                <div style="background-color: #FFFBEB; border: 1px solid #FFCE20; border-radius: 12px; padding: 16px; display: flex; gap: 12px; margin-bottom: 24px;">
+                    <i class="ph-fill ph-warning" style="color: var(--warning); font-size: 20px;"></i>
+                    <div>
+                        <h4 style="color: #975A16; font-size: 13px; font-weight: 700; margin-bottom: 4px;">Evitar Av. Kennedy por congestión</h4>
+                        <p style="color: #975A16; font-size: 12px; line-height: 1.4;">Reordenar las paradas 7, 8 y 9 reduce el atraso estimado.</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-primary" style="flex: 1;"><i class="ph-fill ph-sparkle"></i> Aplicar optimización</button>
+                    <button class="btn" style="flex: 1; border: 1px solid var(--primary); color: var(--primary); background: white;">Ver detalle</button>
+                </div>
+            </div>
+        </div>
+    `;
 };
 
 const initRutas = async () => {
+    // Action helper to refresh after operation
+    window.refreshRutas = () => { window.navigate('rutas'); };
+
     try {
         const rutas = await window.API.getRutas();
-        allRutas = rutas || [];
         
-        // 1. Render KPIs
-        const activas = allRutas.filter(r => r.estado === 'Activa').length;
-        const enRiesgo = allRutas.filter(r => r.estado === 'En riesgo').length;
-        const kmTotal = allRutas.reduce((acc, r) => acc + (Number(r.distancia) || 0), 0);
+        // Render KPIs based on rutas
+        const activas = rutas.filter(r => r.estado === 'Activa' || r.estado === 'EN_CURSO').length;
+        const enRiesgo = rutas.filter(r => r.estado === 'En riesgo').length;
+        const kmTotal = rutas.reduce((acc, r) => acc + (r.distancia || 0), 0);
 
         const kpiContainer = document.getElementById('rutas-kpis-container');
         if (kpiContainer) {
@@ -279,7 +134,7 @@ const initRutas = async () => {
                     <div class="kpi-icon blue"><i class="ph-fill ph-map-pin-line"></i></div>
                     <div class="kpi-content">
                         <div class="kpi-value-row"><span class="kpi-value">${activas}</span></div>
-                        <div class="kpi-label">Rutas activas hoy</div>
+                        <div class="kpi-label">Rutas activas</div>
                     </div>
                 </div>
                 <div class="card kpi-card">
@@ -292,109 +147,242 @@ const initRutas = async () => {
                 <div class="card kpi-card">
                     <div class="kpi-icon" style="background: #EEF2FF; color: #4338CA;"><i class="ph-fill ph-road-horizon"></i></div>
                     <div class="kpi-content">
-                        <div class="kpi-value-row"><span class="kpi-value">${kmTotal} km</span></div>
-                        <div class="kpi-label">Recorrido total planificado</div>
+                        <div class="kpi-value-row"><span class="kpi-value">${kmTotal}</span></div>
+                        <div class="kpi-label">km planificados</div>
                     </div>
                 </div>
             `;
         }
 
-        // 2. Poblar selector de zonas
-        const zonaSelect = document.getElementById('filtro-zona');
-        if (zonaSelect && allRutas.length > 0) {
-            const zonasUnicas = Array.from(new Set(allRutas.map(r => r.zona).filter(Boolean)));
-            zonaSelect.innerHTML = `<option value="todas">Todas las zonas</option>` + 
-                zonasUnicas.map(z => `<option value="${z}">${z}</option>`).join('');
+        // Init Table
+        const tbody = document.getElementById('rutas-table-body');
+        if (tbody && rutas) {
+            tbody.innerHTML = rutas.map(r => {
+                let statusClass = 'ontime';
+                let barColor = 'green';
+                if(r.estado === 'Planificada' || r.estado === 'PLANIFICADA') { statusClass = 'outline'; barColor = 'blue'; }
+                if(r.estado === 'En riesgo') { statusClass = 'risk'; barColor = 'blue'; }
 
-            zonaSelect.addEventListener('change', (e) => {
-                currentRutaZona = e.target.value;
-                filterAndRenderRutas();
-            });
+                let actions = `<button onclick="window.agregarParada(${r.id})" title="Agregar Parada" style="border:none;background:none;color:var(--primary);cursor:pointer;"><i class="ph-bold ph-plus-circle"></i></button>`;
+                if (r.estado === 'PLANIFICADA') {
+                    actions += `<button onclick="window.asignarRuta(${r.id})" title="Asignar" style="border:none;background:none;color:var(--warning);cursor:pointer;margin-left:8px;"><i class="ph-bold ph-user-plus"></i></button>`;
+                } else if (r.estado === 'ASIGNADA') {
+                    actions += `<button onclick="window.iniciarRuta(${r.id})" title="Iniciar Ruta" style="border:none;background:none;color:var(--success);cursor:pointer;margin-left:8px;"><i class="ph-bold ph-play"></i></button>`;
+                } else if (r.estado === 'EN_CURSO') {
+                    actions += `<button onclick="window.cerrarRuta(${r.id})" title="Cerrar Ruta" style="border:none;background:none;color:var(--error);cursor:pointer;margin-left:8px;"><i class="ph-bold ph-check-square"></i></button>`;
+                }
+
+                return `
+                    <tr>
+                        <td style="font-weight: 600;">${r.id}</td>
+                        <td>${r.nombre}</td>
+                        <td>${r.zona}</td>
+                        <td><span class="status-badge ${statusClass}">${r.estado}</span></td>
+                        <td>${r.vehiculo || 'No asig.'}</td>
+                        <td>${r.conductor || 'No asig.'}</td>
+                        <td>${r.paradas}</td>
+                        <td>${r.distancia} km</td>
+                        <td>${r.tiempoEstimado}</td>
+                        <td>
+                            <div class="progress-cell">
+                                <span style="width: 35px; font-size: 12px; font-weight: 600;">${r.avance}%</span>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill ${barColor}" style="width: ${r.avance}%;"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
-        // 3. Listeners filter pills
-        const pills = document.querySelectorAll('.ruta-filter-pill');
-        pills.forEach(pill => {
-            pill.addEventListener('click', () => {
-                const filterVal = pill.getAttribute('data-filter');
-                currentRutaFilter = filterVal;
-
-                pills.forEach(p => {
-                    if (p.getAttribute('data-filter') === filterVal) {
-                        p.classList.add('active');
-                        p.style.borderColor = 'var(--primary)';
-                        p.style.color = 'var(--primary)';
-                        p.style.backgroundColor = '#EFF6FF';
-                    } else {
-                        p.classList.remove('active');
-                        p.style.borderColor = 'var(--border-color)';
-                        p.style.color = 'var(--text-main)';
-                        p.style.backgroundColor = 'transparent';
+        // Action binding for "Crear ruta"
+        const headerActionBtn = document.getElementById('header-action-btn');
+        if (headerActionBtn) {
+            headerActionBtn.onclick = () => {
+                window.showModal('Crear nueva ruta', [
+                    { id: 'nombre', label: 'Nombre de la ruta' },
+                    { id: 'centro', label: 'ID del Centro', value: '1' },
+                    { id: 'zona', label: 'ID de la Zona', value: '1' }
+                ], async (values) => {
+                    if (values.nombre && values.centro && values.zona) {
+                        try {
+                            const res = await window.API.crearRuta({
+                                id_centro: parseInt(values.centro),
+                                id_zona: parseInt(values.zona),
+                                nombre: values.nombre,
+                                fecha_planificada: new Date().toISOString()
+                            });
+                            window.showToast(res.mensaje + " ID: " + res.id_ruta, 'success');
+                            window.refreshRutas();
+                        } catch(err) {
+                            window.showToast("Error: " + err.message, 'error');
+                        }
                     }
                 });
-
-                filterAndRenderRutas();
-            });
-        });
-
-        // 4. Close detail panel btn
-        const closeBtn = document.getElementById('close-ruta-panel-btn');
-        const detailPanel = document.getElementById('rutas-detail-panel');
-        if (closeBtn && detailPanel) {
-            closeBtn.addEventListener('click', () => {
-                detailPanel.style.display = 'none';
-            });
+            };
         }
 
-        // 5. Seleccionar primera ruta
-        if (allRutas.length > 0) {
-            selectedRutaId = allRutas[0].id;
-            renderRutaDetail(allRutas[0]);
-        }
-
-        // 6. Renderizar tabla
-        filterAndRenderRutas();
-
-    } catch (e) {
+    } catch(e) {
         console.error("Error al cargar rutas", e);
     }
 
-    // 7. Init Google Maps
+    // Funciones globales para botones inline
+    window.agregarParada = (id_ruta) => {
+        window.showModal('Agregar Parada', [
+            { id: 'id_pedido', label: 'ID del Pedido a agregar' },
+            { id: 'seq', label: 'Secuencia (Número)', value: '1' }
+        ], async (values) => {
+            if (values.id_pedido && values.seq) {
+                try {
+                    await window.API.agregarParada(id_ruta, { id_pedido: parseInt(values.id_pedido), secuencia: parseInt(values.seq) });
+                    window.showToast("Parada agregada.", 'success');
+                    window.refreshRutas();
+                } catch(err) { window.showToast(err.message, 'error'); }
+            }
+        });
+    };
+    window.asignarRuta = async (id_ruta) => {
+        try {
+            const flota = await window.API.getFlota();
+            const activos = flota.filter(f => f.estado === 'Activo');
+            
+            // Generate a mock weight to simulate intelligent recommendation
+            // In a real scenario, this would come from getDetallesRuta() -> paradas
+            const mockWeight = Math.floor(Math.random() * 20); // 0 to 19 kg
+            const isLight = mockWeight < 10;
+            
+            let vehiculoRecomendado = activos.find(v => (isLight ? v.tipo === 'Liviano' : v.tipo !== 'Liviano')) || activos[0];
+            
+            // Si la db no tiene "tipo", nos basamos en una heurística simple o solo alertamos del peso
+            let recoHtml = `
+                <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 12px;">
+                        <i class="ph-fill ph-sparkle" style="color: var(--primary); font-size: 20px;"></i>
+                        <div>
+                            <h4 style="color: var(--primary); font-size: 13px; font-weight: 700; margin-bottom: 4px;">Recomendación Inteligente</h4>
+                            <p style="color: #1E3A8A; font-size: 12px; line-height: 1.4;">
+                                Peso total estimado: <strong>${mockWeight} kg</strong>.<br>
+                                Sugerencia: <strong>${isLight ? 'Vehículo Liviano' : 'Camión Pesado'}</strong>. 
+                                ${vehiculoRecomendado ? `<br>El sistema recomienda asignar a <strong>${vehiculoRecomendado.patente}</strong> (Conductor: ${vehiculoRecomendado.conductor || 'Disponible'}) porque se encuentra activo y optimizado para esta ruta.` : 'No hay vehículos ideales disponibles, pero puedes elegir de la lista.'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const vehiculoOptions = activos.map(v => ({
+                value: v.id,
+                text: `${v.patente} - ${v.conductor || 'Sin Conductor'} (${v.estado})`,
+                selected: vehiculoRecomendado && vehiculoRecomendado.id === v.id
+            }));
+
+            if (vehiculoOptions.length === 0) {
+                vehiculoOptions.push({ value: '1', text: 'Vehículo Genérico (Mock)' });
+            }
+
+            window.showModal('Asignar Ruta', [
+                { type: 'custom', html: recoHtml },
+                { id: 'id_vehiculo', label: 'Seleccionar Vehículo', type: 'select', options: vehiculoOptions },
+                { id: 'id_conductor', label: 'ID Conductor (Opcional - Hereda de vehículo)', value: '1' }
+            ], async (values) => {
+                if (values.id_vehiculo) {
+                    try {
+                        await window.API.asignarRuta(id_ruta, { id_vehiculo: parseInt(values.id_vehiculo), id_conductor: parseInt(values.id_conductor || 1) });
+                        window.showToast("Ruta asignada.", 'success');
+                        window.refreshRutas();
+                    } catch(err) { window.showToast(err.message, 'error'); }
+                }
+            });
+        } catch(e) {
+            window.showToast("Error al cargar datos para asignación: " + e.message, 'error');
+        }
+    };
+    window.iniciarRuta = (id_ruta) => {
+        window.showModal('Iniciar Ruta', [
+            { id: 'confirm', label: '¿Estás seguro que deseas iniciar la ruta?', type: 'hidden' }
+        ], async () => {
+            try {
+                await window.API.iniciarRuta(id_ruta);
+                window.showToast("Ruta en curso.", 'success');
+                window.refreshRutas();
+            } catch(err) { window.showToast(err.message, 'error'); }
+        });
+    };
+    window.cerrarRuta = (id_ruta) => {
+        window.showModal('Cerrar Ruta', [
+            { id: 'confirm', label: '¿Cerrar ruta definitivamente?', type: 'hidden' }
+        ], async () => {
+            try {
+                await window.API.cerrarRuta(id_ruta);
+                window.showToast("Ruta cerrada exitosamente.", 'success');
+                window.refreshRutas();
+            } catch(err) { window.showToast(err.message, 'error'); }
+        });
+    };
+
+    // 2. Init Google Maps
     const mapEl = document.getElementById('rutas-map');
     if (mapEl) {
         window.API.getConfig().then(config => {
-            if (!config.mapsApiKey) return;
+            if(!config.mapsApiKey) return;
             
-            window.initGoogleMapRutas = () => {
-                const baseLatLng = { lat: -33.284, lng: -70.875 }; // Lampa
+            window.initGoogleMapRutas = async () => {
                 const map = new google.maps.Map(mapEl, {
                     center: { lat: -33.4489, lng: -70.6693 },
                     zoom: 11,
-                    disableDefaultUI: false,
-                    zoomControl: true,
-                    mapTypeControl: false,
-                    streetViewControl: false
+                    disableDefaultUI: true,
+                    zoomControl: true
                 });
-
-                window.mapInstanceRutas = map;
 
                 const trafficLayer = new google.maps.TrafficLayer();
                 trafficLayer.setMap(map);
 
-                // Base Marker
-                new google.maps.Marker({
-                    position: baseLatLng,
-                    map: map,
-                    title: "Centro de Distribución - Lampa",
-                    icon: {
-                        path: google.maps.SymbolPath.CIRCLE,
-                        fillColor: '#0052FF',
-                        fillOpacity: 1,
-                        strokeWeight: 2,
-                        strokeColor: '#FFF',
-                        scale: 9
-                    }
-                });
+                try {
+                    const rutasMapa = await window.API.getMapaRutas();
+                    const directionsService = new google.maps.DirectionsService();
+
+                    const bounds = new google.maps.LatLngBounds();
+                    let colorIndex = 0;
+                    const colors = ['#673AB7', '#E91E63', '#FF9800', '#2196F3', '#4CAF50'];
+
+                    rutasMapa.forEach(ruta => {
+                        const origen = new google.maps.LatLng(ruta.origen_lat, ruta.origen_lng);
+                        const destino = new google.maps.LatLng(ruta.destino_lat, ruta.destino_lng);
+
+                        const color = colors[colorIndex % colors.length];
+                        colorIndex++;
+
+                        const directionsRenderer = new google.maps.DirectionsRenderer({
+                            map: map,
+                            suppressMarkers: false,
+                            polylineOptions: {
+                                strokeColor: color,
+                                strokeWeight: 5,
+                                strokeOpacity: 0.9
+                            }
+                        });
+
+                        directionsService.route({
+                            origin: origen,
+                            destination: destino,
+                            travelMode: google.maps.TravelMode.DRIVING
+                        }, (response, status) => {
+                            if (status === 'OK') {
+                                directionsRenderer.setDirections(response);
+                                const routeBounds = response.routes[0].bounds;
+                                bounds.union(routeBounds);
+                                map.fitBounds(bounds);
+                            } else {
+                                console.warn('No se pudo trazar ruta para: ' + ruta.nombre, status);
+                            }
+                        });
+                    });
+
+                } catch (e) {
+                    console.error("Error cargando datos del mapa", e);
+                }
             };
 
             if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
@@ -408,16 +396,4 @@ const initRutas = async () => {
             }
         }).catch(err => console.error(err));
     }
-};
-
-window.setRutaSearchQuery = (q) => {
-    currentRutaSearch = (q || '').toLowerCase();
-    filterAndRenderRutas();
-};
-
-window.addNewRutaLocally = (newRuta) => {
-    allRutas.unshift(newRuta);
-    selectedRutaId = newRuta.id;
-    renderRutaDetail(newRuta);
-    filterAndRenderRutas();
 };

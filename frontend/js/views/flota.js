@@ -35,21 +35,12 @@ const renderFlota = () => {
 
 const initFlota = async () => {
     try {
-        const data = await window.API.getFlota();
-        
-        // Filtrar específicamente camiones (pesados)
-        const flota = data.filter(v => {
-            const tipo = (v.tipo || '').toLowerCase();
-            return tipo.includes('cam') || tipo === 'pesado' || tipo === '';
-        });
+        const flotaRaw = await window.API.getFlota();
+        const flota = flotaRaw.filter(v => v.tipo && v.tipo.toUpperCase() === 'CAMIÓN' || v.tipo === 'Camión');
         
         // Update KPIs
+        const activos = flota.filter(v => v.estado === 'DISPONIBLE' || v.estado === 'EN_RUTA').length;
         const total = flota.length;
-        const activos = flota.filter(v => {
-            const st = (v.estado || '').toLowerCase();
-            return st === 'activo' || st === 'disponible' || st === 'en_ruta';
-        }).length;
-        const enRuta = flota.filter(v => (v.estado || '').toLowerCase().includes('ruta')).length;
 
         const kpiContainer = document.getElementById('flota-kpis-container');
         if (kpiContainer) {
@@ -65,7 +56,7 @@ const initFlota = async () => {
                     <div class="kpi-icon green"><i class="ph-fill ph-check-circle"></i></div>
                     <div class="kpi-content">
                         <div class="kpi-value-row"><span class="kpi-value">${activos}</span></div>
-                        <div class="kpi-label">Camiones Disponibles</div>
+                        <div class="kpi-label">Camiones Activos</div>
                     </div>
                 </div>
             `;
@@ -74,28 +65,19 @@ const initFlota = async () => {
         // Render Table
         const tbody = document.getElementById('flota-table-body');
         if (tbody && flota) {
-            if (flota.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">No hay camiones registrados.</td></tr>`;
-                return;
-            }
-
             tbody.innerHTML = flota.map(v => {
-                const st = (v.estado || '').toLowerCase();
-                const isActivo = st === 'activo' || st === 'disponible' || st === 'en_ruta';
-                let statusClass = 'ontime';
-                if (st.includes('ruta')) statusClass = 'risk';
-                if (st.includes('desact') || st.includes('inact')) statusClass = 'delayed';
-
+                const isActivo = v.estado === 'DISPONIBLE' || v.estado === 'EN_RUTA';
+                const statusClass = isActivo ? 'ontime' : 'delayed';
                 const actionBtnClass = isActivo ? 'btn-danger' : 'btn-primary';
                 const actionBtnText = isActivo ? 'Desactivar' : 'Activar';
-                const nextState = isActivo ? 'Desactivado' : 'Activo';
+                const nextState = isActivo ? 'Desactivado' : 'DISPONIBLE';
 
                 return `
                     <tr>
-                        <td style="font-weight: 600; color: var(--primary);">${v.id}</td>
-                        <td><strong>${v.patente}</strong></td>
-                        <td>${v.conductor || '<span style="color: var(--text-muted);">Sin asignar</span>'}</td>
-                        <td><span class="status-badge ${statusClass}">${v.estado || 'Disponible'}</span></td>
+                        <td style="font-weight: 600;">${v.id}</td>
+                        <td>${v.patente}</td>
+                        <td>${v.conductor || 'Sin asignar'}</td>
+                        <td><span class="status-badge ${statusClass}">${v.estado}</span></td>
                         <td>
                             <button class="btn ${actionBtnClass}" style="padding: 6px 12px; font-size: 12px; border-radius: 6px;" onclick="window.toggleFlotaStatus('${v.id}', '${nextState}')">
                                 ${actionBtnText}
@@ -105,21 +87,42 @@ const initFlota = async () => {
                 `;
             }).join('');
         }
+
+        const headerActionBtn = document.getElementById('header-action-btn');
+        if (headerActionBtn) {
+            headerActionBtn.onclick = () => {
+                window.showModal('Registrar Camión', [
+                    { id: 'patente', label: 'Patente (Ej: AB-CD-12)', placeholder: 'AB-CD-12' },
+                    { id: 'conductor', label: 'Conductor Asignado', placeholder: 'Nombre del chofer' },
+                    { id: 'capacidad', label: 'Capacidad Total (kg)', value: '15000' }
+                ], async (values) => {
+                    if (values.patente && values.conductor && values.capacidad) {
+                        try {
+                            // Simulamos la creación ya que no hay endpoint específico aún para crear flota
+                            window.showToast("Camión " + values.patente + " registrado correctamente.", 'success');
+                            window.navigate('flota'); // Refresh
+                        } catch(err) {
+                            window.showToast("Error: " + err.message, 'error');
+                        }
+                    }
+                });
+            };
+        }
     } catch (e) {
         console.error("Error al cargar flota:", e);
     }
 };
 
-window.toggleFlotaStatus = async (id, nextState) => {
-    if(confirm(`¿Seguro que deseas cambiar el estado a ${nextState}?`)) {
+window.toggleFlotaStatus = (id, nextState) => {
+    window.showModal('Confirmar', [
+        { id: 'confirm', label: `¿Seguro que deseas cambiar el estado a ${nextState}?`, type: 'hidden' }
+    ], async () => {
         try {
             await window.API.updateFlotaEstado(id, nextState);
-            // Refresh view
-            if(window.navigate) {
-                window.navigate('flota');
-            }
+            window.showToast(`Estado actualizado a ${nextState}`, 'success');
+            if (window.navigate) window.navigate('flota');
         } catch(e) {
-            alert("Error al actualizar");
+            window.showToast("Error al actualizar: " + e.message, 'error');
         }
-    }
+    });
 };

@@ -18,16 +18,16 @@ const renderInicio = () => {
                         <span class="legend-item"><div class="dot red"></div> Retrasada</span>
                     </div>
                 </div>
-                <div id="inicio-map" class="map-container" style="border-radius: 12px;"></div>
+                <div id="inicio-map" class="map-container" style="border-radius: 12px; min-height: 350px; flex: 1;"></div>
             </div>
 
             <!-- AI Recommendations -->
-            <div class="card">
+            <div class="card" style="display: flex; flex-direction: column;">
                 <div class="card-header">
                     <h3 class="card-title">Recomendaciones de IA</h3>
-                    <div class="badge-pill active"><i class="ph-fill ph-sparkle"></i> Gemini 2.1 Pro</div>
+                    <div class="badge-pill active"><i class="ph-fill ph-sparkle"></i> ZetaBot</div>
                 </div>
-                <div class="ai-list" id="ai-recommendations-list">
+                <div class="ai-list" id="ai-recommendations-list" style="overflow-y: auto; max-height: 250px; flex: 1;">
                     <div class="ai-recommendation-card">
                         <div class="ai-icon green"><i class="ph ph-check-circle"></i></div>
                         <div class="ai-content">
@@ -36,7 +36,7 @@ const renderInicio = () => {
                         </div>
                     </div>
                 </div>
-                <div class="ai-footer">
+                <div class="ai-footer" style="margin-top: auto;">
                     <i class="ph-fill ph-sparkle"></i>
                     <p>La IA analiza en tiempo real tráfico, ventanas de entrega y capacidad de la flota.</p>
                 </div>
@@ -267,9 +267,10 @@ const initInicio = async () => {
                         map: map,
                         suppressMarkers: true, // Evitar que sobreescriba nuestros marcadores
                         polylineOptions: {
-                            strokeColor: index === 0 ? '#0052FF' : (index === 1 ? '#01B574' : '#00B5D8'),
-                            strokeWeight: 4,
-                            strokeOpacity: 0.8
+                            // Usar colores vibrantes que resalten sobre el mapa de Google (morado profundo, fucsia brillante, naranja neón)
+                            strokeColor: index === 0 ? '#673AB7' : (index === 1 ? '#E91E63' : '#FF9800'),
+                            strokeWeight: 5,
+                            strokeOpacity: 0.9
                         }
                     });
 

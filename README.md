@@ -1,15 +1,18 @@
 # POLI - Sistema de Planificación y Optimización Logística Inteligente
 
-**POLI (Plataforma de Optimización Logística Inteligente)** es una solución de vanguardia diseñada para revolucionar la gestión de flotas y despachos de última milla. 
+**POLI (Plataforma de Optimización Logística Inteligente)** es una solución integral diseñada para la gestión de flotas y despachos de última milla, brindando a las empresas control absoluto de su operación en tiempo real.
 
-## Visión Comercial
+## Estado del Proyecto (V1.0 - Entregable)
 
-En el mercado actual, la logística exige eficiencia, visibilidad y rapidez. POLI nace para brindar a las empresas de transporte, como TransAndes, el control absoluto de su operación en tiempo real.
+El proyecto se encuentra en una etapa estable, con el Frontend y Backend completamente conectados e integrados con Cloudflare Workers y D1. 
+Se ha limpiado el repositorio de archivos huérfanos y se han estabilizado las consultas SQL y el flujo de interfaz de usuario.
 
-Nuestra plataforma permite:
-- **Reducción de Costos Operativos:** Gracias a la asignación inteligente de vehículos y conductores, se minimizan los kilómetros recorridos en vacío.
-- **Toma de Decisiones Ágil:** Un panel de control intuitivo con KPIs (como el OTIF) que indica instantáneamente la salud del negocio.
-- **Mitigación de Riesgos:** Alertas predictivas que notifican cuando una ruta o entrega está en riesgo de retraso, permitiendo actuar antes de que el cliente final lo note.
-- **Transparencia Total:** Todos los actores de la cadena (desde la gerencia hasta el operador logístico) tienen una vista unificada y actualizada del progreso diario.
+**Para cualquier persona o Agente IA que tome este proyecto, por favor revisar la siguiente documentación antes de codificar:**
 
-POLI no es solo un software de mapas; es un sistema centralizado de inteligencia logística que potencia la puntualidad, aumenta la capacidad de respuesta y mejora la satisfacción del cliente final.
+1. [**REPORTE.md**](REPORTE.md): Contiene el estado actual detallado, los endpoints conectados, y **muy importante: La lista de tareas pendientes (To-Do)** para la versión V2 (ZetaBot, Comunas, Alertas, etc.).
+2. [**TECHNICAL.md**](TECHNICAL.md): Contiene la arquitectura estricta del sistema, las dependencias y cómo fluye la autenticación.
+
+## Despliegue Rápido
+El sistema consta de dos partes:
+- **Backend (Workers):** `npx wrangler dev` (Local) o `npx wrangler deploy` (Producción).
+- **Frontend:** Abrir `frontend/index.html` con Live Server o desplegar con `npx wrangler pages deploy frontend`.

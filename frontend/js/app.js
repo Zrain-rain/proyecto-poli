@@ -42,6 +42,78 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Global UI Functions
+    window.showToast = (message, type = 'success') => {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        const icons = { success: 'ph-check-circle', error: 'ph-warning-circle', warning: 'ph-warning' };
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="ph-fill ${icons[type] || icons.success}"></i> <span>${message}</span>`;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('hiding');
+            toast.addEventListener('animationend', () => toast.remove());
+        }, 3000);
+    };
+
+    window.showModal = (title, fields, onConfirm) => {
+        const overlay = document.getElementById('global-modal');
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const btnCancel = document.getElementById('modal-cancel');
+        const btnConfirm = document.getElementById('modal-confirm');
+        const btnClose = document.getElementById('modal-close');
+
+        if(!overlay) return;
+
+        titleEl.textContent = title;
+        bodyEl.innerHTML = fields.map(f => {
+            if (f.type === 'custom') {
+                return f.html;
+            }
+            if (f.type === 'select') {
+                return `
+                    <div class="modal-input-group">
+                        <label>${f.label}</label>
+                        <select id="modal-input-${f.id}">
+                            ${f.options.map(opt => `<option value="${opt.value}" ${opt.selected ? 'selected' : ''}>${opt.text}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+            return `
+                <div class="modal-input-group">
+                    <label>${f.label}</label>
+                    <input type="${f.type || 'text'}" id="modal-input-${f.id}" placeholder="${f.placeholder || ''}" value="${f.value || ''}">
+                </div>
+            `;
+        }).join('');
+
+        const closeModal = () => { overlay.style.display = 'none'; };
+
+        btnCancel.onclick = closeModal;
+        btnClose.onclick = closeModal;
+        
+        btnConfirm.onclick = () => {
+            const values = {};
+            fields.forEach(f => {
+                if (f.id) {
+                    const inputEl = document.getElementById(`modal-input-${f.id}`);
+                    if (inputEl) values[f.id] = inputEl.value;
+                }
+            });
+            onConfirm(values);
+            closeModal();
+        };
+
+        overlay.style.display = 'flex';
+    };
+
     const viewContainer = document.getElementById('view-container');
     const navItems = document.querySelectorAll('.nav-item[data-view]');
     
@@ -54,10 +126,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar Toggle
     const sidebar = document.querySelector('.sidebar');
     const toggleBtn = document.getElementById('sidebar-toggle');
-    if (sidebar && toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-        });
+    const overlay = document.getElementById('sidebar-overlay');
+    const closeBtn = document.getElementById('sidebar-close-btn');
+    
+    if (sidebar) {
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('collapsed');
+                if (overlay) {
+                    overlay.classList.toggle('active');
+                }
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.remove('collapsed');
+                if (overlay) overlay.classList.remove('active');
+            });
+        }
+
+        // Close sidebar on mobile when clicking the overlay
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('collapsed');
+                overlay.classList.remove('active');
+            });
+        }
     }
 
     // Real-time Clock
@@ -74,6 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(updateClock, 1000);
     }
 
+    // Update Alert Badge
+    const updateAlertBadge = async () => {
+        try {
+            const alertas = await window.API.getAlertas();
+            const badge = document.getElementById('sidebar-alert-badge');
+            if (badge && alertas) {
+                const count = alertas.length;
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline-flex' : 'none';
+            }
+        } catch(e) { console.error('Error fetching alertas badge:', e); }
+    };
+    updateAlertBadge();
+
+
     // Role-based UI logic
     const navInicio = document.querySelector('.nav-item[data-view="inicio"]');
     const navOperacion = document.querySelector('.nav-item[data-view="operacion"]');
@@ -82,22 +194,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const navVehiculos = document.getElementById('nav-vehiculos');
     const navDespachador = document.getElementById('nav-despachador');
 
-    if (userRole === 'admin' || userRole === 'user' || userRole === 'operador') {
+    if (userRole && ['admin', 'user', 'operador'].includes(userRole.toLowerCase())) {
         if (navFlota) navFlota.style.display = 'flex';
         if (navVehiculos) navVehiculos.style.display = 'flex';
     }
     
-    if (userRole === 'despachador') {
+    if (userRole && userRole.toLowerCase() === 'despachador') {
+        if (navInicio) navInicio.style.display = 'none';
+        if (navRutas) navRutas.style.display = 'none';
+        if (navFlota) navFlota.style.display = 'none';
+        if (navVehiculos) navVehiculos.style.display = 'none';
+        if (navDespachador) navDespachador.style.display = 'flex';
+        // Hide sidebar for mobile workers to give full screen to their app
+        document.querySelector('.sidebar').style.display = 'none';
+        document.querySelector('.main-content').style.marginLeft = '0';
+        
+        // Inyectar botón de logout en el header para que puedan salir
+        const headerRight = document.querySelector('.header-right');
+        if (headerRight && !document.getElementById('mobile-logout-btn')) {
+            const logoutBtn = document.createElement('button');
+            logoutBtn.id = 'mobile-logout-btn';
+            logoutBtn.className = 'btn btn-primary';
+            logoutBtn.innerHTML = '<i class="ph-bold ph-sign-out"></i> Salir';
+            logoutBtn.onclick = () => {
+                if(confirm('¿Desea cerrar sesión?')) {
+                    localStorage.removeItem('poli_jwt');
+                    localStorage.removeItem('poli_role');
+                    localStorage.removeItem('poli_user');
+                    window.location.href = 'login.html';
+                }
+            };
+            headerRight.appendChild(logoutBtn);
+        }
+    }
+
+    if (userRole && userRole.toLowerCase() === 'conductor') {
         if (navInicio) navInicio.style.display = 'none';
         if (navOperacion) navOperacion.style.display = 'none';
         if (navRutas) navRutas.style.display = 'none';
         if (navFlota) navFlota.style.display = 'none';
         if (navVehiculos) navVehiculos.style.display = 'none';
-        if (navDespachador) navDespachador.style.display = 'flex';
-        // Hide sidebar header text except for mobile
-        document.querySelector('.sidebar').style.width = '100%';
+        if (navDespachador) navDespachador.style.display = 'none';
+        
+        document.querySelector('.sidebar').style.display = 'none';
         document.querySelector('.main-content').style.marginLeft = '0';
-        document.querySelector('.sidebar').style.display = 'none'; // Maybe hide sidebar completely for despachador if they just see the mobile view
+        
+        const headerRight = document.querySelector('.header-right');
+        if (headerRight && !document.getElementById('mobile-logout-btn')) {
+            const logoutBtn = document.createElement('button');
+            logoutBtn.id = 'mobile-logout-btn';
+            logoutBtn.className = 'btn btn-primary';
+            logoutBtn.innerHTML = '<i class="ph-bold ph-sign-out"></i> Salir';
+            logoutBtn.onclick = () => {
+                if(confirm('¿Desea cerrar sesión?')) {
+                    localStorage.removeItem('poli_jwt');
+                    localStorage.removeItem('poli_role');
+                    localStorage.removeItem('poli_user');
+                    window.location.href = 'login.html';
+                }
+            };
+            headerRight.appendChild(logoutBtn);
+        }
     }
 
     // View configurations
@@ -116,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             render: renderOperacion,
             init: initOperacion,
             showActionBtn: true,
-            actionText: 'Nueva operación',
+            actionText: 'Crear pedido',
             showSearch: true
         },
         'rutas': {
@@ -133,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
             subtitle: 'Control de camiones pesados',
             render: renderFlota,
             init: initFlota,
-            showActionBtn: false,
+            showActionBtn: true,
+            actionText: 'Registrar Camión',
             showSearch: true
         },
         'vehiculos': {
@@ -141,7 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
             subtitle: 'Control de vehículos livianos y última milla',
             render: renderVehiculos,
             init: initVehiculos,
-            showActionBtn: false,
+            showActionBtn: true,
+            actionText: 'Registrar Vehículo Liviano',
             showSearch: true
         },
         'alertas': {
@@ -165,6 +324,14 @@ document.addEventListener('DOMContentLoaded', () => {
             subtitle: 'Mis rutas y entregas',
             render: renderDespachador,
             init: initDespachador,
+            showActionBtn: false,
+            showSearch: false
+        },
+        'conductor': {
+            title: 'Mi Ruta',
+            subtitle: 'Navegación y entregas',
+            render: typeof renderConductor !== 'undefined' ? renderConductor : () => '<div style="padding: 24px;">Módulo en construcción</div>',
+            init: typeof initConductor !== 'undefined' ? initConductor : () => {},
             showActionBtn: false,
             showSearch: false
         },
@@ -208,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (view.showActionBtn) {
             headerActionBtn.style.display = 'inline-flex';
             document.getElementById('header-action-text').textContent = view.actionText;
+            headerActionBtn.onclick = null; // Clear previous handlers
         } else {
             headerActionBtn.style.display = 'none';
         }
@@ -233,6 +401,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const viewName = item.dataset.view;
             navigate(viewName);
+            // Hide sidebar on mobile after clicking
+            if (window.innerWidth <= 768 && sidebar) {
+                sidebar.classList.remove('collapsed'); // In our CSS, mobile shows when .collapsed is present
+                const overlay = document.getElementById('sidebar-overlay');
+                if (overlay) overlay.classList.remove('active');
+            }
         });
     });
 
@@ -510,6 +684,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load initial view based on role
     if (userRole === 'despachador') {
         navigate('despachador');
+    } else if (userRole === 'conductor') {
+        navigate('conductor');
     } else {
         navigate('inicio');
     }
