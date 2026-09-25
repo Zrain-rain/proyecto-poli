@@ -55,6 +55,14 @@ const renderConfiguracion = () => {
                     </div>
                 </div>
                 
+                
+                <div style="background-color: var(--bg-main); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Editar Mi Perfil</h4>
+                    <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                        <input type="text" id="cfg-my-name" class="modal-input" placeholder="Mi Nombre" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <button id="btn-update-name" class="btn btn-primary" style="padding: 10px 16px;"><i class="ph-bold ph-floppy-disk"></i> Guardar</button>
+                    </div>
+                </div>
                 <button id="cfg-logout-btn" class="btn" style="background-color: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; width: 100%; font-weight: 600;">
                     <i class="ph-bold ph-sign-out"></i> Cerrar Sesión Definitivamente
                 </button>
@@ -64,6 +72,23 @@ const renderConfiguracion = () => {
 };
 
 const initConfiguracion = async () => {
+    
+    const myNameInput = document.getElementById('cfg-my-name');
+    if(myNameInput) {
+        myNameInput.value = localStorage.getItem('poli_user') || 'Usuario';
+        document.getElementById('btn-update-name').onclick = () => {
+            const newName = myNameInput.value.trim();
+            if(newName) {
+                localStorage.setItem('poli_user', newName);
+                const sidebarName = document.getElementById('sidebar-user-name');
+                if(sidebarName) sidebarName.textContent = newName;
+                const sidebarAvatar = document.getElementById('sidebar-avatar');
+                if(sidebarAvatar) sidebarAvatar.src = 'https://ui-avatars.com/api/?name='+encodeURIComponent(newName)+'&background=E2E8F0&color=475569';
+                window.showToast('Nombre actualizado correctamente', 'success');
+            }
+        };
+    }
+
     // 1. Cargar roles disponibles
     try {
         const roles = await window.API.getRoles();

@@ -177,9 +177,11 @@ window.API = {
 
     // 12. Optimización
     decidirOptimizacion: async (idRecomendacion, decision) => {
+        // If decision is an object (like {decision: 'APROBADA'}), extract the string.
+        const decisionStr = typeof decision === 'object' ? decision.decision : decision;
         return await fetchAPI(`/data/optimizaciones/${idRecomendacion}/decision`, {
             method: 'PUT',
-            body: JSON.stringify({ decision })
+            body: JSON.stringify({ decision: decisionStr })
         });
     },
 

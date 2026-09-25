@@ -124,7 +124,7 @@ const initOperacion = async () => {
             window.showModal('Anular Entrega', [{ id: 'motivo', label: 'Motivo de anulación (opcional)', value: '' }], async () => {
                 try {
                     // MOCK ACTUAL DB CALL
-                    await window.API.registrarIncidencia({ id_pedido: selectedOp.id_pedido, tipo_incidencia: 'Anulación de Operación', descripcion: 'Cancelado por usuario' });
+                    await window.API.registrarIncidencia({ id_ruta: 1, id_parada: 1, tipo: 'Anulación de Operación', descripcion: 'Cancelado por usuario - Pedido ' + selectedOp.id_pedido });
                     // In real DB, we also update the order state. We simulate this by showing success.
                     window.showToast("Operación anulada en la base de datos.", "success");
                     window.navigate('operacion'); // reload
@@ -141,7 +141,7 @@ const initOperacion = async () => {
                 if(!vals.nueva_fecha) return window.showToast('Debe seleccionar fecha', 'warning');
                 try {
                     // MOCK ACTUAL DB CALL for recoorindation
-                    await window.API.registrarIncidencia({ id_pedido: selectedOp.id_pedido, tipo_incidencia: 'Recoordinación', descripcion: 'Nueva fecha: ' + vals.nueva_fecha });
+                    await window.API.registrarIncidencia({ id_ruta: 1, id_parada: 1, tipo: 'Recoordinación', descripcion: 'Nueva fecha: ' + vals.nueva_fecha + ' - Pedido ' + selectedOp.id_pedido });
                     window.showToast("Pedido recoordinado exitosamente.", "success");
                     window.navigate('operacion');
                 } catch(e) { window.showToast(e.message, 'error'); }

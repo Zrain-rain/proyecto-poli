@@ -156,14 +156,15 @@ const initInicio = async () => {
         if (tbody && operaciones) {
             tbody.innerHTML = operaciones.slice(0, 5).map(op => {
                 let statusClass = 'ontime';
-                if(op.estado === 'En riesgo') statusClass = 'risk';
-                if(op.estado === 'Con retraso' || op.estado === 'Retrasada') statusClass = 'delayed';
-
+                if(op.estado === 'En riesgo' || op.estado === 'EN_RIESGO') statusClass = 'risk';
+                if(op.estado === 'Con retraso' || op.estado === 'Retrasada' || op.estado === 'ATRASADO') statusClass = 'delayed';
+                if(op.estado === 'PENDIENTE') statusClass = 'outline';
+                
                 return `
-                    <tr>
-                        <td style="color: var(--primary); font-weight: 600;">${op.id}</td>
+                    <tr style="cursor: pointer;" onclick="window.navigate('operacion')">
+                        <td style="color: var(--primary); font-weight: 600;">${op.pedido || op.id}</td>
                         <td>${op.destino}</td>
-                        <td>${op.vehiculo || 'No asignado'}</td>
+                        <td>${op.vehiculo || '<span style="color:var(--text-muted);">Sin asignar</span>'}</td>
                         <td><span class="status-badge ${statusClass}">${op.estado}</span></td>
                     </tr>
                 `;
@@ -171,6 +172,33 @@ const initInicio = async () => {
         }
     } catch (e) {
         console.error("Error al cargar operaciones", e);
+    }
+
+    
+    // 4. ZetaBot Animation (IA)
+    const aiList = document.getElementById('ai-recommendations-list');
+    if (aiList) {
+        const messages = [
+            { icon: 'ph-arrows-clockwise', color: 'blue', title: 'Analizando tráfico...', text: 'Verificando congestiones en Sector Oriente y Centro.' },
+            { icon: 'ph-sparkle', color: 'primary', title: 'Optimizando rutas', text: 'Buscando mejores alternativas para los pedidos en riesgo.' },
+            { icon: 'ph-check-circle', color: 'green', title: 'Operación Fluyendo', text: 'No hay alertas severas de tráfico detectadas actualmente.' },
+            { icon: 'ph-arrows-clockwise', color: 'blue', title: 'Re-evaluando flota', text: 'Verificando capacidad y ubicación de los vehículos.' },
+        ];
+        let currentMsg = 0;
+        setInterval(() => {
+            currentMsg = (currentMsg + 1) % messages.length;
+            const msg = messages[currentMsg];
+            const isSpin = msg.icon === 'ph-arrows-clockwise' ? 'animation: spin 2s linear infinite;' : '';
+            aiList.innerHTML = `
+                <div class="ai-recommendation-card" style="opacity: 0; animation: fadeIn 0.5s forwards;">
+                    <div class="ai-icon ${msg.color}"><i class="ph ${msg.icon}" style="${isSpin}"></i></div>
+                    <div class="ai-content">
+                        <h4>${msg.title}</h4>
+                        <p>${msg.text}</p>
+                    </div>
+                </div>
+            `;
+        }, 5000);
     }
 
     // 3. Init Chart.js (Dinámico basado en operaciones)
