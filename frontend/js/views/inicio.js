@@ -350,31 +350,4 @@ const initInicio = async () => {
             }
         }).catch(err => console.error(err));
     }
-
-    // 5. Cargar Recomendaciones IA
-    const aiList = document.getElementById('ai-recommendations-list');
-    if (aiList) {
-        aiList.innerHTML = `<div style="padding: 16px; color: var(--text-muted);">Consultando a Gemini AI...</div>`;
-        try {
-            const aiData = await window.API.getAIRecomendaciones();
-            if (aiData && aiData.recomendacion) {
-                aiList.innerHTML = `
-                    <div class="ai-recommendation-card" style="border-left: 4px solid var(--primary); display:block; padding:16px;">
-                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                            <div class="ai-icon blue"><i class="ph-fill ph-robot"></i></div>
-                            <h4 style="margin:0;">Análisis de Gemini</h4>
-                        </div>
-                        <div class="ai-content" style="color: var(--text-main); line-height: 1.5;">
-                            ${aiData.recomendacion}
-                        </div>
-                    </div>
-                `;
-            } else {
-                aiList.innerHTML = `<div style="padding: 16px; color: var(--danger);">No se pudo obtener recomendación.</div>`;
-            }
-        } catch (e) {
-            console.error("Error cargando IA:", e);
-            aiList.innerHTML = `<div style="padding: 16px; color: var(--danger);">Error conectando con Gemini.</div>`;
-        }
-    }
 };
