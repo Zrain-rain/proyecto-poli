@@ -453,24 +453,8 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
       Mantén un tono profesional pero cercano, respondiendo en formato Markdown breve.`;
     }
     
-    // INTERVENCIÓN: Si la clave comienza con AQ., sabemos que es una clave restringida que no soporta generación de texto simple.
-    // Para que el sistema funcione visualmente, simulamos la respuesta de la IA.
-    if (apiKey.startsWith('AQ.')) {
-      let mockRespuesta = "";
-      if (results.length === 0) {
-        mockRespuesta = "**Zetabot:** ¡Hola! Veo que no hay pedidos programados para hoy. Estoy listo para analizar tus operaciones en cuanto comiences a despachar.";
-      } else {
-        mockRespuesta = "**Zetabot:** He analizado tus operaciones en curso:\n\n";
-        results.forEach(r => {
-          mockRespuesta += `- **Pedido ${r.id}** (${r.destino}): Te sugiero asignar un vehículo liviano por la zona. Vigila el horario de ${r.ventana_horaria}.\n`;
-        });
-        mockRespuesta += "\nGuardaré estos patrones para futuras recomendaciones.";
-      }
-      return c.json({ recomendacion: mockRespuesta });
-    }
-
-    // Simplificamos la petición para forzar el uso de clave API estándar con el modelo correcto
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/antigravity-preview-latest:generateContent?key=${apiKey}`;
+    // Llamada real a Gemini API
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const headers = { 'Content-Type': 'application/json' };
 
     const response = await fetch(url, {

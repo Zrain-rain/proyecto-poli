@@ -174,31 +174,77 @@ const initInicio = async () => {
         console.error("Error al cargar operaciones", e);
     }
 
-    
-    // 4. ZetaBot Animation (IA)
+    // 4. ZetaBot — Llamada real a Gemini IA
     const aiList = document.getElementById('ai-recommendations-list');
     if (aiList) {
-        const messages = [
-            { icon: 'ph-arrows-clockwise', color: 'blue', title: 'Analizando tráfico...', text: 'Verificando congestiones en Sector Oriente y Centro.' },
-            { icon: 'ph-sparkle', color: 'primary', title: 'Optimizando rutas', text: 'Buscando mejores alternativas para los pedidos en riesgo.' },
-            { icon: 'ph-check-circle', color: 'green', title: 'Operación Fluyendo', text: 'No hay alertas severas de tráfico detectadas actualmente.' },
-            { icon: 'ph-arrows-clockwise', color: 'blue', title: 'Re-evaluando flota', text: 'Verificando capacidad y ubicación de los vehículos.' },
+        // Animación de carga mientras consulta Gemini
+        const loadingMessages = [
+            'Analizando tráfico en tiempo real...',
+            'Revisando operaciones del día...',
+            'Optimizando rutas de entrega...',
+            'Buscando mejores alternativas...',
+            'Consultando modelos de IA...'
         ];
-        let currentMsg = 0;
-        setInterval(() => {
-            currentMsg = (currentMsg + 1) % messages.length;
-            const msg = messages[currentMsg];
-            const isSpin = msg.icon === 'ph-arrows-clockwise' ? 'animation: spin 2s linear infinite;' : '';
+        let loadIdx = 0;
+        aiList.innerHTML = `
+            <div class="ai-recommendation-card">
+                <div class="ai-icon blue"><i class="ph ph-arrows-clockwise" style="animation: spin 2s linear infinite;"></i></div>
+                <div class="ai-content">
+                    <h4 id="zetabot-loading-text">${loadingMessages[0]}</h4>
+                    <p style="color: var(--text-muted);">ZetaBot está procesando...</p>
+                </div>
+            </div>
+        `;
+        const loadingInterval = setInterval(() => {
+            loadIdx = (loadIdx + 1) % loadingMessages.length;
+            const el = document.getElementById('zetabot-loading-text');
+            if (el) el.textContent = loadingMessages[loadIdx];
+        }, 3000);
+
+        // Llamada real a la API
+        try {
+            const aiData = await window.API.getAIRecomendaciones();
+            clearInterval(loadingInterval);
+            if (aiData && aiData.recomendacion) {
+                // Convertir markdown básico a HTML
+                let html = aiData.recomendacion
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+                aiList.innerHTML = `
+                    <div class="ai-recommendation-card" style="display:block; padding:16px; border-left: 4px solid var(--primary);">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                            <div class="ai-icon blue"><i class="ph-fill ph-robot"></i></div>
+                            <h4 style="margin:0;">ZetaBot · Análisis IA</h4>
+                        </div>
+                        <div class="ai-content" style="color: var(--text-main); line-height: 1.6; font-size: 13px;">
+                            ${html}
+                        </div>
+                    </div>
+                `;
+            } else {
+                aiList.innerHTML = `
+                    <div class="ai-recommendation-card">
+                        <div class="ai-icon green"><i class="ph ph-check-circle"></i></div>
+                        <div class="ai-content">
+                            <h4>Sin alertas</h4>
+                            <p>ZetaBot no detectó problemas en la operación actual.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            clearInterval(loadingInterval);
+            console.error("Error ZetaBot:", e);
             aiList.innerHTML = `
-                <div class="ai-recommendation-card" style="opacity: 0; animation: fadeIn 0.5s forwards;">
-                    <div class="ai-icon ${msg.color}"><i class="ph ${msg.icon}" style="${isSpin}"></i></div>
+                <div class="ai-recommendation-card">
+                    <div class="ai-icon red"><i class="ph-fill ph-warning"></i></div>
                     <div class="ai-content">
-                        <h4>${msg.title}</h4>
-                        <p>${msg.text}</p>
+                        <h4>Error de conexión</h4>
+                        <p>No se pudo conectar con Gemini. ${e.message || ''}</p>
                     </div>
                 </div>
             `;
-        }, 5000);
+        }
     }
 
     // 3. Init Chart.js (Dinámico basado en operaciones)
