@@ -214,6 +214,28 @@ app.get('/api/v1/data/rutas', async (c) => {
 
 
 // Crear Ruta (Solo User, Admin)
+
+// --- NUEVOS ENDPOINTS PARA BOTONES FRONTEND ---
+app.put('/api/v1/data/pedidos/:id/estado', requireRole(['admin', 'user', 'operador', 'despachador']), async (c) => {
+    try {
+        const { nuevo_estado } = await c.req.json();
+        const id_pedido = c.req.param('id');
+        await c.env.DB.prepare(`UPDATE Pedido SET estado = ? WHERE id_pedido = ?`).bind(nuevo_estado, id_pedido).run();
+        return c.json({ mensaje: 'Estado de pedido actualizado a ' + nuevo_estado });
+    } catch(e) { return c.json({ error: e.message }, 400); }
+});
+
+app.put('/api/v1/data/pedidos/:id/recoordinar', requireRole(['admin', 'user', 'operador', 'despachador']), async (c) => {
+    try {
+        const { fecha_requerida, ventana_horaria } = await c.req.json();
+        const id_pedido = c.req.param('id');
+        await c.env.DB.prepare(`UPDATE Pedido SET fecha_requerida = ?, ventana_horaria = ?, estado = 'PENDIENTE' WHERE id_pedido = ?`)
+            .bind(fecha_requerida, ventana_horaria, id_pedido).run();
+        return c.json({ mensaje: 'Pedido recoordinado exitosamente' });
+    } catch(e) { return c.json({ error: e.message }, 400); }
+});
+// ----------------------------------------------
+
 app.post('/api/v1/data/rutas', requireRole(['admin', 'user']), async (c) => {
   try {
     const body = await c.req.json()
@@ -292,6 +314,28 @@ app.post('/api/v1/data/operaciones', requireRole(['admin', 'user', 'operador']),
 })
 
 // 2. usp_POLI_CrearRuta
+
+// --- NUEVOS ENDPOINTS PARA BOTONES FRONTEND ---
+app.put('/api/v1/data/pedidos/:id/estado', requireRole(['admin', 'user', 'operador', 'despachador']), async (c) => {
+    try {
+        const { nuevo_estado } = await c.req.json();
+        const id_pedido = c.req.param('id');
+        await c.env.DB.prepare(`UPDATE Pedido SET estado = ? WHERE id_pedido = ?`).bind(nuevo_estado, id_pedido).run();
+        return c.json({ mensaje: 'Estado de pedido actualizado a ' + nuevo_estado });
+    } catch(e) { return c.json({ error: e.message }, 400); }
+});
+
+app.put('/api/v1/data/pedidos/:id/recoordinar', requireRole(['admin', 'user', 'operador', 'despachador']), async (c) => {
+    try {
+        const { fecha_requerida, ventana_horaria } = await c.req.json();
+        const id_pedido = c.req.param('id');
+        await c.env.DB.prepare(`UPDATE Pedido SET fecha_requerida = ?, ventana_horaria = ?, estado = 'PENDIENTE' WHERE id_pedido = ?`)
+            .bind(fecha_requerida, ventana_horaria, id_pedido).run();
+        return c.json({ mensaje: 'Pedido recoordinado exitosamente' });
+    } catch(e) { return c.json({ error: e.message }, 400); }
+});
+// ----------------------------------------------
+
 app.post('/api/v1/data/rutas', requireRole(['admin', 'despachador']), async (c) => {
     try { return c.json(await PoliServices.crearRuta(c.env, c.req, c.get('user')), 201); } catch(e) { return c.json({ error: e.message }, 400); }
 })

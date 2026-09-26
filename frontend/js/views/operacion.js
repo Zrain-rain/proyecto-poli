@@ -123,8 +123,8 @@ const initOperacion = async () => {
             if(!selectedOp) return;
             window.showModal('Anular Entrega', [{ id: 'motivo', label: 'Motivo de anulación (opcional)', value: '' }], async () => {
                 try {
+                    await window.API.updatePedidoEstado(selectedOp.id_pedido, 'CANCELADO');
                     await window.API.registrarIncidencia({ id_ruta: null, id_parada: null, tipo: 'Anulación de Operación', descripcion: 'Cancelado por usuario - Pedido ' + selectedOp.id_pedido });
-                    // Adicionalmente actualizamos el frontend para que se vea cancelado de inmediato
                     window.showToast("Operación anulada exitosamente.", "success");
                     if (window.navigate) window.navigate('operacion'); // reload
                 } catch(e) { window.showToast(e.message, 'error'); }
@@ -139,6 +139,7 @@ const initOperacion = async () => {
             ], async (vals) => {
                 if(!vals.nueva_fecha) return window.showToast('Debe seleccionar fecha', 'warning');
                 try {
+                    await window.API.recoordinarPedido(selectedOp.id_pedido, vals.nueva_fecha, vals.nueva_ventana);
                     await window.API.registrarIncidencia({ id_ruta: null, id_parada: null, tipo: 'Recoordinación', descripcion: 'Nueva fecha: ' + vals.nueva_fecha + ' - Pedido ' + selectedOp.id_pedido });
                     window.showToast("Pedido recoordinado exitosamente.", "success");
                     if (window.navigate) window.navigate('operacion');
@@ -156,6 +157,10 @@ const initOperacion = async () => {
                         try {
                             const [idVehiculo] = vals.vehiculo.split('|');
                             // Create route and assign just for this order
+                            // Si el estado no es PENDIENTE (es una reasignación), forzamos el estado a PENDIENTE en el backend
+                            if (selectedOp.estado !== 'PENDIENTE') {
+                                await window.API.updatePedidoEstado(selectedOp.id_pedido, 'PENDIENTE');
+                            }
                             const resRuta = await window.API.createRuta({ id_centro: 1, id_zona: 1, nombre: 'Ruta ' + selectedOp.id_pedido, fecha_planificada: new Date().toISOString() });
                             await window.API.agregarParada(resRuta.id_ruta, { id_pedido: selectedOp.id_pedido, secuencia: 1 });
                             await window.API.asignarRuta(resRuta.id_ruta, { id_vehiculo: parseInt(idVehiculo), id_conductor: 1 });

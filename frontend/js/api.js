@@ -142,7 +142,21 @@ window.API = {
     },
 
     // Alias para compatibilidad con código de remote (GitHub)
-    createOperacion: async (operacionData) => {
+    
+    // Pedidos / Operaciones endpoints
+    updatePedidoEstado: async (idPedido, nuevoEstado) => {
+        return await fetchAPI(`/data/pedidos/${idPedido}/estado`, {
+            method: 'PUT',
+            body: JSON.stringify({ nuevo_estado: nuevoEstado })
+        });
+    },
+    recoordinarPedido: async (idPedido, fecha_requerida, ventana_horaria) => {
+        return await fetchAPI(`/data/pedidos/${idPedido}/recoordinar`, {
+            method: 'PUT',
+            body: JSON.stringify({ fecha_requerida, ventana_horaria })
+        });
+    },
+createOperacion: async (operacionData) => {
         return await fetchAPI('/data/operaciones', {
             method: 'POST',
             body: JSON.stringify(operacionData)
