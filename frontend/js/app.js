@@ -656,11 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeModal();
                 alert(`¡Pedido creado exitosamente!`);
                 // Refrescar mapa/lista en la vista actual
-                if (currentActiveView === 'operacion' && window.views['operacion'].init) {
-                    window.views['operacion'].init();
-                } else if (currentActiveView === 'inicio' && window.views['inicio'].init) {
-                    window.views['inicio'].init();
-                }
+                if (window.navigate) window.navigate(currentActiveView);
             } catch (err) {
                 console.warn('API error:', err);
                 alert('Error al crear el pedido: ' + err.message);
