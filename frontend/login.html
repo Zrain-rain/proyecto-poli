@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POLI - Iniciar Sesión</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="img/Logo POLI de rutas inteligentes.png">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -131,6 +133,14 @@
     </style>
 </head>
 <body>
+    <!-- Global Loader -->
+    <div id="global-loader" class="global-loader active">
+        <div class="loader-content">
+            <img src="img/Logo POLI de rutas inteligentes.png" alt="POLI Logo">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
 
     <div class="login-container">
         <div class="login-logo" style="flex-direction: column;">
@@ -168,7 +178,19 @@
     </div>
 
     <script src="js/api.js"></script>
+    
     <script>
+        // Hide global loader after short delay
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('global-loader');
+                if (loader) {
+                    loader.classList.remove('active');
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
+            }, 600);
+        });
+
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault(); // Prevent normal form submission
             

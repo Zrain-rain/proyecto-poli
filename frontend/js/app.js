@@ -392,6 +392,9 @@ document.addEventListener('DOMContentLoaded', () => {
             searchBar.style.display = 'none';
         }
 
+        window.zetabotVoice?.dispose();
+        window.zetabotVoice = null;
+
         // Render Content
         viewContainer.innerHTML = view.render();
         
@@ -695,4 +698,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         navigate('inicio');
     }
+
+    // Hide global loader after a brief delay for smooth transition
+    setTimeout(() => {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+            loader.classList.remove('active');
+            setTimeout(() => loader.style.display = 'none', 500);
+        }
+    }, 600);
 });
+
