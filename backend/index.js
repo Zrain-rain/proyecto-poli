@@ -453,30 +453,63 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
       Mantén un tono profesional pero cercano, respondiendo en formato Markdown breve.`;
     }
     
-    // Llamada real a Gemini API
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const headers = { 'Content-Type': 'application/json' };
-
+    // Llamada real a Gemini API (usar header en vez de query param para keys AQ.)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+    
     const response = await fetch(url, {
       method: 'POST',
-      headers: headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
       body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
     })
 
     const data = await response.json()
     if (data.error) {
       console.error("Gemini Error:", data.error);
-      return c.json({ recomendacion: `**Zetabot:** Ocurrió un error en la conexión de IA (${data.error.message || 'Error desconocido'}).` });
+      // Fallback inteligente: no mostrar error técnico al usuario
+      return c.json({ recomendacion: generarRespuestaLocal(results), fallback: true });
     }
-    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "**Zetabot:** No pude generar una recomendación en este momento."
+    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || generarRespuestaLocal(results);
     return c.json({ recomendacion: aiText })
   } catch (err) {
     console.error("AI Endpoint Error:", err);
-    // Cambiado: Retornamos 200 en lugar de 500 para evitar crashear el fetch del frontend
-    return c.json({ 
-      recomendacion: "**Zetabot:** Actualmente estoy experimentando problemas de conexión. Por favor revisa la configuración o inténtalo más tarde."
-    });
+    return c.json({ recomendacion: generarRespuestaLocal([]), fallback: true });
   }
 })
+
+// Función de respuestas locales inteligentes cuando Gemini no está disponible
+function generarRespuestaLocal(operaciones) {
+  if (!operaciones || operaciones.length === 0) {
+    const saludos = [
+      "**Zetabot:** ¡Hola! Bienvenido al sistema POLI. Actualmente no tengo conexión activa con el motor de análisis avanzado, pero puedo ayudarte igualmente. No hay pedidos registrados para hoy — cuando crees tu primera operación, estaré listo para analizarla.",
+      "**Zetabot:** ¡Buenos días! Estoy operando en modo local por el momento. No detecto pedidos programados para hoy. Te sugiero comenzar creando un nuevo pedido desde la sección de Operaciones para que pueda empezar a darte recomendaciones.",
+    ];
+    return saludos[Math.floor(Math.random() * saludos.length)];
+  }
+
+  let respuesta = "**Zetabot:** Estoy operando con análisis local en este momento (sin conexión al motor IA avanzado), pero revisé tus operaciones:\n\n";
+  
+  const pendientes = operaciones.filter(o => o.estado === 'PENDIENTE');
+  const enRiesgo = operaciones.filter(o => o.estado === 'EN_RIESGO' || o.estado === 'En riesgo');
+  const atrasados = operaciones.filter(o => o.estado === 'ATRASADO' || o.estado === 'Con retraso');
+
+  if (pendientes.length > 0) {
+    respuesta += `- Tienes **${pendientes.length} pedido(s) pendientes** de asignación. Te recomiendo asignarles transporte cuanto antes.\n`;
+  }
+  if (enRiesgo.length > 0) {
+    respuesta += `- Hay **${enRiesgo.length} operación(es) en riesgo**. Revisa si puedes reasignar vehículos o recoordinar ventanas horarias.\n`;
+  }
+  if (atrasados.length > 0) {
+    respuesta += `- **${atrasados.length} entrega(s) con retraso** detectadas. Considera contactar al cliente para informar.\n`;
+  }
+  if (pendientes.length === 0 && enRiesgo.length === 0 && atrasados.length === 0) {
+    respuesta += `- Todas las operaciones (${operaciones.length}) están fluyendo con normalidad. ¡Buen trabajo!\n`;
+  }
+
+  respuesta += "\nSi necesitas una consulta específica, no dudes en preguntar. Intentaré reconectarme con el análisis avanzado en la próxima carga.";
+  return respuesta;
+}
 
 export default app
