@@ -706,6 +706,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loader.classList.remove('active');
             setTimeout(() => loader.style.display = 'none', 500);
         }
-    }, 600);
+    }, 1500);
 });
 

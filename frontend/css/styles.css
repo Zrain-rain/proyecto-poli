@@ -1221,7 +1221,7 @@ tr:hover td {
     transition: background-color 0.2s;
 }
 .dropdown-item:hover {
-    background-color: var(--bg-main);
+    background-color: #ffffff; /* Fijo para que no se mezcle */
 }
 .dropdown-item i {
     font-size: 16px;
@@ -1246,7 +1246,7 @@ tr:hover td {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: var(--bg-main);
+    background-color: #ffffff; /* Fijo para que no se mezcle */
     z-index: 9999;
     display: flex;
     justify-content: center;
