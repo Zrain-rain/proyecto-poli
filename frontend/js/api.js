@@ -58,10 +58,13 @@ window.API = {
     getRutas: async () => await fetchAPI('/data/rutas'),
     getAlertas: async () => await fetchAPI('/data/alertas'),
     getAIRecomendaciones: async () => await fetchAPI('/data/ai/recomendaciones'),
+    enviarMensajeZetabot: async (message) => {
+        return await fetchAPI('/data/ai/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message })
+        });
+    },
     getReportesOTIF: async () => await fetchAPI('/data/reportes/otif'),
-
-    // =====================================
-    // POLI SERVICES FLOW
     // =====================================
 
     // 1. Crear Pedido

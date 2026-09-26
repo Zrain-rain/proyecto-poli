@@ -21,24 +21,18 @@ const renderInicio = () => {
                 <div id="inicio-map" class="map-container" style="border-radius: 12px; min-height: 350px; flex: 1;"></div>
             </div>
 
-            <!-- AI Recommendations -->
+            <!-- AI Recommendations (ZetaBot Chat) -->
             <div class="card" style="display: flex; flex-direction: column;">
                 <div class="card-header">
-                    <h3 class="card-title">Recomendaciones de IA</h3>
-                    <div class="badge-pill active"><i class="ph-fill ph-sparkle"></i> ZetaBot</div>
+                    <h3 class="card-title">ZetaBot</h3>
+                    <div class="badge-pill active"><i class="ph-fill ph-sparkle"></i> IA Activa</div>
                 </div>
-                <div class="ai-list" id="ai-recommendations-list" style="overflow-y: auto; max-height: 250px; flex: 1;">
-                    <div class="ai-recommendation-card">
-                        <div class="ai-icon green"><i class="ph ph-check-circle"></i></div>
-                        <div class="ai-content">
-                            <h4>Rutas Optimizadas</h4>
-                            <p>No hay alertas de tráfico severas. La operación fluye con normalidad.</p>
-                        </div>
-                    </div>
+                <div class="ai-list" id="ai-recommendations-list" style="overflow-y: auto; max-height: 250px; flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 12px;">
+                    <!-- Los mensajes del chat irán aquí -->
                 </div>
-                <div class="ai-footer" style="margin-top: auto;">
-                    <i class="ph-fill ph-sparkle"></i>
-                    <p>La IA analiza en tiempo real tráfico, ventanas de entrega y capacidad de la flota.</p>
+                <div style="padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
+                    <input type="text" id="zetabot-chat-input" placeholder="Pregúntale a ZetaBot..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 13px;">
+                    <button id="zetabot-chat-btn" class="btn btn-primary" style="padding: 8px 12px;"><i class="ph-bold ph-paper-plane-right"></i></button>
                 </div>
             </div>
         </div>
@@ -174,77 +168,102 @@ const initInicio = async () => {
         console.error("Error al cargar operaciones", e);
     }
 
-    // 4. ZetaBot — Llamada real a Gemini IA
+    // 4. ZetaBot — Chat e Inicialización
     const aiList = document.getElementById('ai-recommendations-list');
-    if (aiList) {
-        // Animación de carga mientras consulta Gemini
-        const loadingMessages = [
-            'Analizando tráfico en tiempo real...',
-            'Revisando operaciones del día...',
-            'Optimizando rutas de entrega...',
-            'Buscando mejores alternativas...',
-            'Consultando modelos de IA...'
-        ];
-        let loadIdx = 0;
-        aiList.innerHTML = `
-            <div class="ai-recommendation-card">
-                <div class="ai-icon blue"><i class="ph ph-arrows-clockwise" style="animation: spin 2s linear infinite;"></i></div>
-                <div class="ai-content">
-                    <h4 id="zetabot-loading-text">${loadingMessages[0]}</h4>
-                    <p style="color: var(--text-muted);">ZetaBot está procesando...</p>
-                </div>
-            </div>
-        `;
-        const loadingInterval = setInterval(() => {
-            loadIdx = (loadIdx + 1) % loadingMessages.length;
-            const el = document.getElementById('zetabot-loading-text');
-            if (el) el.textContent = loadingMessages[loadIdx];
-        }, 3000);
+    const chatInput = document.getElementById('zetabot-chat-input');
+    const chatBtn = document.getElementById('zetabot-chat-btn');
 
-        // Llamada real a la API
-        try {
-            const aiData = await window.API.getAIRecomendaciones();
-            clearInterval(loadingInterval);
-            if (aiData && aiData.recomendacion) {
-                // Convertir markdown básico a HTML
-                let html = aiData.recomendacion
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\n/g, '<br>');
-                aiList.innerHTML = `
-                    <div class="ai-recommendation-card" style="display:block; padding:16px; border-left: 4px solid var(--primary);">
-                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                            <div class="ai-icon blue"><i class="ph-fill ph-robot"></i></div>
-                            <h4 style="margin:0;">ZetaBot · Análisis IA</h4>
-                        </div>
-                        <div class="ai-content" style="color: var(--text-main); line-height: 1.6; font-size: 13px;">
-                            ${html}
-                        </div>
-                    </div>
-                `;
-            } else {
-                aiList.innerHTML = `
-                    <div class="ai-recommendation-card">
-                        <div class="ai-icon green"><i class="ph ph-check-circle"></i></div>
-                        <div class="ai-content">
-                            <h4>Sin alertas</h4>
-                            <p>ZetaBot no detectó problemas en la operación actual.</p>
-                        </div>
-                    </div>
-                `;
-            }
-        } catch (e) {
-            clearInterval(loadingInterval);
-            console.error("Error ZetaBot:", e);
-            aiList.innerHTML = `
-                <div class="ai-recommendation-card">
-                    <div class="ai-icon red"><i class="ph-fill ph-warning"></i></div>
-                    <div class="ai-content">
-                        <h4>Error de conexión</h4>
-                        <p>No se pudo conectar con Gemini. ${e.message || ''}</p>
-                    </div>
+    if (aiList && chatInput && chatBtn) {
+        // Función para agregar mensaje al chat
+        const appendMessage = (sender, text, isHtml = false) => {
+            const isBot = sender === 'ZetaBot';
+            const bgClass = isBot ? 'bg-primary-light' : 'bg-gray-100';
+            const align = isBot ? 'flex-start' : 'flex-end';
+            const icon = isBot ? '<div class="ai-icon blue" style="min-width: 24px; height: 24px;"><i class="ph-fill ph-robot"></i></div>' : '';
+            
+            // Format text (convert markdown bold to strong and newlines to br if not already HTML)
+            let formattedText = isHtml ? text : text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            // Remove the "**Zetabot:**" prefix if it comes from backend
+            if (isBot) formattedText = formattedText.replace(/<strong>Zetabot:<\/strong><br>/gi, '').replace(/<strong>Zetabot:<\/strong>/gi, '');
+
+            const msgDiv = document.createElement('div');
+            msgDiv.style.cssText = `display: flex; gap: 8px; align-self: ${align}; max-width: 90%;`;
+            
+            let contentHtml = `<div style="background: ${isBot ? '#e8f0fe' : '#f1f3f4'}; padding: 10px 14px; border-radius: 12px; font-size: 13px; color: var(--text-main); line-height: 1.5; border-bottom-${isBot ? 'left' : 'right'}-radius: 2px;">${formattedText}</div>`;
+            
+            msgDiv.innerHTML = isBot ? icon + contentHtml : contentHtml;
+            aiList.appendChild(msgDiv);
+            aiList.scrollTop = aiList.scrollHeight;
+        };
+
+        // Función de carga del bot
+        const showTyping = () => {
+            const msgDiv = document.createElement('div');
+            msgDiv.id = 'zetabot-typing';
+            msgDiv.style.cssText = `display: flex; gap: 8px; align-self: flex-start;`;
+            msgDiv.innerHTML = `
+                <div class="ai-icon blue" style="min-width: 24px; height: 24px;"><i class="ph-fill ph-robot"></i></div>
+                <div style="background: #e8f0fe; padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px;">
+                    <i class="ph ph-dots-three" style="animation: pulse 1.5s infinite; font-size: 18px;"></i>
                 </div>
             `;
-        }
+            aiList.appendChild(msgDiv);
+            aiList.scrollTop = aiList.scrollHeight;
+        };
+        const removeTyping = () => {
+            const typing = document.getElementById('zetabot-typing');
+            if (typing) typing.remove();
+        };
+
+        // Carga Inicial
+        showTyping();
+        window.API.getAIRecomendaciones().then(aiData => {
+            removeTyping();
+            if (aiData && aiData.recomendacion) {
+                appendMessage('ZetaBot', aiData.recomendacion);
+            } else {
+                appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte con las operaciones de hoy.');
+            }
+        }).catch(e => {
+            removeTyping();
+            console.error("Error ZetaBot:", e);
+            appendMessage('ZetaBot', 'Estoy experimentando problemas de conexión, pero el sistema POLI funciona normalmente.');
+        });
+
+        // Interacción del usuario
+        const handleSend = async () => {
+            const msg = chatInput.value.trim();
+            if (!msg) return;
+            
+            appendMessage('User', msg);
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatBtn.disabled = true;
+            
+            showTyping();
+            try {
+                const response = await window.API.enviarMensajeZetabot(msg);
+                removeTyping();
+                if (response && response.respuesta) {
+                    appendMessage('ZetaBot', response.respuesta);
+                } else {
+                    appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
+                }
+            } catch (error) {
+                removeTyping();
+                console.error(error);
+                appendMessage('ZetaBot', 'Ocurrió un error al intentar conectarme.');
+            }
+            
+            chatInput.disabled = false;
+            chatBtn.disabled = false;
+            chatInput.focus();
+        };
+
+        chatBtn.addEventListener('click', handleSend);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSend();
+        });
     }
 
     // 3. Init Chart.js (Dinámico basado en operaciones)

@@ -420,96 +420,119 @@ app.get('/api/v1/data/reportes/costos', requireRole(['admin']), async (c) => {
 })
 
 // ==========================================
-// NUEVOS ENDPOINTS: IA (Gemini)
+// NUEVOS ENDPOINTS: IA (Gemini Interactions API)
 // ==========================================
+
+async function llamarGemini(apiKey, inputText) {
+  // Intento 1: Interactions API (nuevo formato REST)
+  try {
+    const resp1 = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ model: 'models/gemini-2.0-flash', input: [{ type: 'text', text: inputText }] })
+    });
+    const d1 = await resp1.json();
+    if (!d1.error) {
+      const t = d1.output_text || d1.steps?.find(s => s.type === 'model_output')?.content?.find(c => c.type === 'text')?.text;
+      if (t) return { text: t, ok: true };
+    }
+    console.error('Interactions API:', d1.error?.message || JSON.stringify(d1).substring(0, 200));
+  } catch (e) { console.error('Interactions fetch:', e.message); }
+
+  // Intento 2: generateContent clásico
+  try {
+    const resp2 = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({ contents: [{ parts: [{ text: inputText }] }] })
+    });
+    const d2 = await resp2.json();
+    if (!d2.error) {
+      const t2 = d2.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (t2) return { text: t2, ok: true };
+    }
+    console.error('generateContent:', d2.error?.message || JSON.stringify(d2).substring(0, 200));
+  } catch (e) { console.error('generateContent fetch:', e.message); }
+
+  return { text: null, ok: false };
+}
+
 app.get('/api/v1/data/ai/recomendaciones', async (c) => {
   try {
-    const query = `
+    const { results } = await c.env.DB.prepare(`
       SELECT p.id_pedido as id, u.direccion as destino, p.estado, p.ventana_horaria
-      FROM Pedido p
-      JOIN UbicacionCliente u ON p.id_ubicacion = u.id_ubicacion
+      FROM Pedido p JOIN UbicacionCliente u ON p.id_ubicacion = u.id_ubicacion
       WHERE p.fecha_requerida = date('now', 'localtime')
-    `
-    const { results } = await c.env.DB.prepare(query).all()
+    `).all();
 
     const apiKey = c.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return c.json({ 
-        recomendacion: '**Zetabot:** Hola! Para poder ayudarte y analizar tus rutas, por favor configura la variable de entorno `GEMINI_API_KEY` en tu proyecto de Cloudflare (o en .dev.vars si estás en local).'
-      });
-    }
+    if (!apiKey) return c.json({ recomendacion: generarRespuestaLocal(results), fallback: true });
 
-    let promptText = "";
-    if (results.length === 0) {
-      promptText = "Eres Zetabot, el asistente logístico de IA oficial de POLI. Actualmente no hay pedidos registrados para hoy. Por favor, da una cálida y amistosa bienvenida al usuario (sin importar su rol) y ofrécele tu ayuda para empezar a gestionar operaciones, crear su primer pedido o planificar rutas de forma eficiente.";
-    } else {
-      const operacionesTexto = results.map(r => `[Pedido ${r.id}] Destino: ${r.destino}, Estado: ${r.estado}, Horario: ${r.ventana_horaria}`).join(' | ');
-      promptText = `Eres Zetabot, el asistente logístico de IA experto de POLI. Analiza las siguientes operaciones en curso: ${operacionesTexto}.
-      Instrucciones estrictas:
-      1. Recomienda de forma breve a qué chofer/vehículo convendría enviar cada ruta basándote en la zona o eficiencia y da un porqué breve para que el operador pueda gestionarlo.
-      2. Revisa si alguna ruta va atrasada o "En riesgo" y di qué se puede hacer para mejorar el tiempo y cumplir con el cliente.
-      3. Sé completamente honesto: si no hay una ruta mejor para llegar a un lugar, dilo sin mentir.
-      4. Indica que guardarás esta información para futuras referencias y sugerir ir más temprano la próxima vez si aplica.
-      Mantén un tono profesional pero cercano, respondiendo en formato Markdown breve.`;
-    }
-    
-    // Llamada real a Gemini API (usar header en vez de query param para keys AQ.)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-    })
+    const prompt = results.length === 0
+      ? "Eres Zetabot, asistente logístico de POLI. No hay pedidos hoy. Da una bienvenida cálida y ofrece ayuda. Markdown breve."
+      : `Eres Zetabot, asistente logístico de POLI. Operaciones: ${results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ')}. Analiza brevemente, recomienda asignaciones y detecta riesgos. Markdown breve.`;
 
-    const data = await response.json()
-    if (data.error) {
-      console.error("Gemini Error:", data.error);
-      // Fallback inteligente: no mostrar error técnico al usuario
-      return c.json({ recomendacion: generarRespuestaLocal(results), fallback: true });
-    }
-    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || generarRespuestaLocal(results);
-    return c.json({ recomendacion: aiText })
+    const r = await llamarGemini(apiKey, prompt);
+    return c.json({ recomendacion: r.ok ? r.text : generarRespuestaLocal(results), fallback: !r.ok });
   } catch (err) {
-    console.error("AI Endpoint Error:", err);
+    console.error("AI Error:", err);
     return c.json({ recomendacion: generarRespuestaLocal([]), fallback: true });
   }
 })
 
-// Función de respuestas locales inteligentes cuando Gemini no está disponible
-function generarRespuestaLocal(operaciones) {
-  if (!operaciones || operaciones.length === 0) {
-    const saludos = [
-      "**Zetabot:** ¡Hola! Bienvenido al sistema POLI. Actualmente no tengo conexión activa con el motor de análisis avanzado, pero puedo ayudarte igualmente. No hay pedidos registrados para hoy — cuando crees tu primera operación, estaré listo para analizarla.",
-      "**Zetabot:** ¡Buenos días! Estoy operando en modo local por el momento. No detecto pedidos programados para hoy. Te sugiero comenzar creando un nuevo pedido desde la sección de Operaciones para que pueda empezar a darte recomendaciones.",
-    ];
-    return saludos[Math.floor(Math.random() * saludos.length)];
-  }
+// Chat interactivo con ZetaBot
+app.post('/api/v1/data/ai/chat', async (c) => {
+  try {
+    const { message } = await c.req.json();
+    if (!message) return c.json({ respuesta: 'Escribe un mensaje para continuar.' });
 
-  let respuesta = "**Zetabot:** Estoy operando con análisis local en este momento (sin conexión al motor IA avanzado), pero revisé tus operaciones:\n\n";
-  
-  const pendientes = operaciones.filter(o => o.estado === 'PENDIENTE');
-  const enRiesgo = operaciones.filter(o => o.estado === 'EN_RIESGO' || o.estado === 'En riesgo');
-  const atrasados = operaciones.filter(o => o.estado === 'ATRASADO' || o.estado === 'Con retraso');
+    const apiKey = c.env.GEMINI_API_KEY;
+    let ctx = "";
+    try {
+      const { results } = await c.env.DB.prepare(`SELECT p.id_pedido as id, u.direccion as destino, p.estado FROM Pedido p JOIN UbicacionCliente u ON p.id_ubicacion = u.id_ubicacion ORDER BY p.id_pedido DESC LIMIT 15`).all();
+      if (results.length > 0) ctx = "Operaciones en el sistema: " + results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ') + ". ";
+    } catch(e) {}
 
-  if (pendientes.length > 0) {
-    respuesta += `- Tienes **${pendientes.length} pedido(s) pendientes** de asignación. Te recomiendo asignarles transporte cuanto antes.\n`;
-  }
-  if (enRiesgo.length > 0) {
-    respuesta += `- Hay **${enRiesgo.length} operación(es) en riesgo**. Revisa si puedes reasignar vehículos o recoordinar ventanas horarias.\n`;
-  }
-  if (atrasados.length > 0) {
-    respuesta += `- **${atrasados.length} entrega(s) con retraso** detectadas. Considera contactar al cliente para informar.\n`;
-  }
-  if (pendientes.length === 0 && enRiesgo.length === 0 && atrasados.length === 0) {
-    respuesta += `- Todas las operaciones (${operaciones.length}) están fluyendo con normalidad. ¡Buen trabajo!\n`;
-  }
+    const prompt = `Eres Zetabot, asistente logístico de POLI. ${ctx}Responde de forma profesional y concisa en Markdown breve.\n\nUsuario: ${message}`;
 
-  respuesta += "\nSi necesitas una consulta específica, no dudes en preguntar. Intentaré reconectarme con el análisis avanzado en la próxima carga.";
-  return respuesta;
+    if (!apiKey) return c.json({ respuesta: responderLocal(message) });
+
+    const r = await llamarGemini(apiKey, prompt);
+    return c.json({ respuesta: r.ok ? r.text : responderLocal(message), fallback: !r.ok });
+  } catch (err) {
+    console.error("Chat Error:", err);
+    return c.json({ respuesta: responderLocal("error") });
+  }
+})
+
+function responderLocal(msg) {
+  const m = (msg || '').toLowerCase();
+  if (m.includes('hola') || m.includes('hey') || m.includes('buenas'))
+    return "**Zetabot:** ¡Hola! Estoy operando en modo local, pero puedo ayudarte con consultas sobre el sistema. ¿En qué te asisto?";
+  if (m.includes('ruta'))
+    return "**Zetabot:** Para gestionar rutas, ve a la sección **Rutas** en el menú. Ahí puedes crear, asignar y optimizar recorridos.";
+  if (m.includes('pedido') || m.includes('entrega') || m.includes('operacion'))
+    return "**Zetabot:** Gestiona pedidos desde **Operaciones**. Verás el listado completo y podrás asignar transporte o recoordinar entregas.";
+  if (m.includes('vehiculo') || m.includes('camion') || m.includes('flota'))
+    return "**Zetabot:** La gestión de vehículos está en **Gestión de Camiones** y **Vehículos** en el menú lateral.";
+  if (m.includes('ayuda') || m.includes('help'))
+    return "**Zetabot:** Puedo ayudarte con:\n- **Operaciones** y entregas\n- **Rutas** y optimización\n- **Vehículos** y flota\n\nPregúntame lo que necesites.";
+  return "**Zetabot:** Gracias por tu consulta. Estoy en modo local por el momento, pero el sistema POLI funciona normalmente. ¿Necesitas ayuda con operaciones, rutas o flota?";
+}
+
+function generarRespuestaLocal(ops) {
+  if (!ops || ops.length === 0)
+    return "**Zetabot:** ¡Hola! No hay pedidos para hoy. Crea uno desde Operaciones para empezar. ¿En qué te ayudo?";
+  const p = ops.filter(o => o.estado === 'PENDIENTE').length;
+  const r = ops.filter(o => o.estado === 'EN_RIESGO' || o.estado === 'En riesgo').length;
+  let txt = "**Zetabot:** Revisé tus operaciones:\n";
+  if (p > 0) txt += `- **${p} pendiente(s)** — asigna transporte.\n`;
+  if (r > 0) txt += `- **${r} en riesgo** — revisa reasignación.\n`;
+  if (p === 0 && r === 0) txt += `- Todo fluye bien (${ops.length} ops). ¡Buen trabajo!\n`;
+  txt += "\n¿Alguna consulta?";
+  return txt;
 }
 
 export default app
+
+
