@@ -510,8 +510,29 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBody.innerHTML = `
             <form id="form-nueva-operacion">
                 <div class="modal-form-group">
-                    <label>Destino de Entrega (Dirección Completa)</label>
-                    <input type="text" id="modal-op-destino" placeholder="Ej: Av. Vitacura 5400, Vitacura, Chile" required>
+                    <label>Dirección (Calle y Número)</label>
+                    <input type="text" id="modal-op-calle" placeholder="Ej: Av. Vitacura 5400" required>
+                </div>
+                <div class="modal-form-group">
+                    <label>Comuna (Región Metropolitana)</label>
+                    <select id="modal-op-comuna" required>
+                        <option value="">Seleccione Comuna...</option>
+                        <option value="Santiago">Santiago</option>
+                        <option value="Providencia">Providencia</option>
+                        <option value="Las Condes">Las Condes</option>
+                        <option value="Vitacura">Vitacura</option>
+                        <option value="Lo Barnechea">Lo Barnechea</option>
+                        <option value="Ñuñoa">Ñuñoa</option>
+                        <option value="Macul">Macul</option>
+                        <option value="Peñalolén">Peñalolén</option>
+                        <option value="La Florida">La Florida</option>
+                        <option value="Maipú">Maipú</option>
+                        <option value="Estación Central">Estación Central</option>
+                        <option value="Pudahuel">Pudahuel</option>
+                        <option value="Quilicura">Quilicura</option>
+                        <option value="San Bernardo">San Bernardo</option>
+                        <option value="Puente Alto">Puente Alto</option>
+                    </select>
                 </div>
                 <div class="modal-form-group">
                     <label>Ventana Horaria</label>
@@ -523,29 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <option value="16:00 - 18:00">16:00 - 18:00</option>
                     </select>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                    <div class="modal-form-group">
-                        <label>Vehículo Asignado</label>
-                        <select id="modal-op-vehiculo" required>
-                            <option value="V-101">V-101 (Camión)</option>
-                            <option value="V-118">V-118 (Camión)</option>
-                            <option value="V-207">V-207 (Liviano)</option>
-                            <option value="V-093">V-093 (Liviano)</option>
-                        </select>
-                    </div>
-                    <div class="modal-form-group">
-                        <label>Conductor Asignado</label>
-                        <select id="modal-op-conductor" required>
-                            <option value="F. Contreras">F. Contreras</option>
-                            <option value="A. Morales">A. Morales</option>
-                            <option value="M. Silva">M. Silva</option>
-                            <option value="Sin asignar">Sin asignar</option>
-                        </select>
-                    </div>
-                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn" style="background: white; border: 1px solid var(--border-color); color: var(--text-main);" onclick="document.getElementById('action-modal').classList.remove('active')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="ph-bold ph-plus"></i> Crear Operación</button>
+                    <button type="submit" class="btn btn-primary" id="btn-crear-pedido"><i class="ph-bold ph-plus"></i> Crear Pedido</button>
                 </div>
             </form>
         `;
@@ -553,35 +554,70 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('form-nueva-operacion');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const destino = document.getElementById('modal-op-destino').value.trim();
+            const calle = document.getElementById('modal-op-calle').value.trim();
+            const comuna = document.getElementById('modal-op-comuna').value;
             const ventana = document.getElementById('modal-op-ventana').value;
-            const vehiculo = document.getElementById('modal-op-vehiculo').value;
-            const conductor = document.getElementById('modal-op-conductor').value;
+            const btn = document.getElementById('btn-crear-pedido');
 
-            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            const direccion_completa = `${calle}, ${comuna}, Chile`;
+
+            // Geocoding
+            btn.disabled = true;
+            btn.innerHTML = 'Procesando...';
+
+            let lat = null;
+            let lng = null;
+
+            if (typeof google !== 'undefined' && google.maps) {
+                try {
+                    const geocoder = new google.maps.Geocoder();
+                    const result = await new Promise((resolve, reject) => {
+                        geocoder.geocode({ address: direccion_completa }, (res, status) => {
+                            if (status === 'OK') resolve(res[0].geometry.location);
+                            else reject(status);
+                        });
+                    });
+                    lat = result.lat();
+                    lng = result.lng();
+                } catch(err) {
+                    console.warn('Geocoder failed, using fallback coordinates');
+                    // Fallback to central Santiago
+                    lat = -33.4489;
+                    lng = -70.6693;
+                }
+            } else {
+                lat = -33.4489;
+                lng = -70.6693;
+            }
+
             const newOp = {
-                id: `#E${randomNum}`,
-                pedido: `P-${Math.floor(10000 + Math.random() * 90000)}`,
-                destino,
-                ventana,
-                vehiculo,
-                conductor,
-                estado: 'A tiempo',
-                avance: 0
+                id_cliente: 1, // Default para UI
+                direccion: direccion_completa,
+                latitud: lat,
+                longitud: lng,
+                codigo_pedido: `P-${Math.floor(10000 + Math.random() * 90000)}`,
+                fecha_requerida: new Date().toISOString().split('T')[0],
+                ventana_horaria: ventana,
+                peso_total: 10,
+                volumen_total: 0.5
             };
 
             try {
-                await window.API.createOperacion(newOp);
+                const response = await window.API.createOperacion(newOp);
+                closeModal();
+                alert(`¡Pedido creado exitosamente!`);
+                // Refrescar mapa/lista en la vista actual
+                if (currentActiveView === 'operacion' && window.views['operacion'].init) {
+                    window.views['operacion'].init();
+                } else if (currentActiveView === 'inicio' && window.views['inicio'].init) {
+                    window.views['inicio'].init();
+                }
             } catch (err) {
                 console.warn('API error:', err);
+                alert('Error al crear el pedido: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph-bold ph-plus"></i> Crear Pedido';
             }
-
-            if (window.addNewOperacionLocally) {
-                window.addNewOperacionLocally(newOp);
-            }
-
-            closeModal();
-            alert(`¡Operación ${newOp.id} creada exitosamente!\nAsignada a ${conductor} (${vehiculo}).`);
         });
 
         actionModal.classList.add('active');

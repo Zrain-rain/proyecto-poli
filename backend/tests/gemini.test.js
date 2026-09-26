@@ -127,7 +127,7 @@ test('chat se inicializa aunque los KPIs no respondan; muestra fallback y escapa
  vm.runInContext(readFileSync(new URL('../../frontend/js/views/inicio.js',import.meta.url),'utf8'),context);
  vm.runInContext('initInicio()',context);
  await new Promise(resolve=>setImmediate(resolve));
- assert.match(elements.get('zetabot-badge').innerHTML,/Respuestas locales/);
+ assert.match(elements.get('zetabot-badge').innerHTML,/IA LOCAL/);
  const input=elements.get('zetabot-chat-input');
  input.value='<script>bad</script>';
  await elements.get('zetabot-chat-btn').listeners.click();
@@ -136,4 +136,35 @@ test('chat se inicializa aunque los KPIs no respondan; muestra fallback y escapa
  assert.ok(html.includes('&lt;img'));
  assert.ok(html.includes('&lt;script&gt;'));
  assert.equal(html.includes('<img'),false);
+});
+
+test('diagnóstico conserva código Google sin filtrar clave ni mensaje del proveedor', async () => {
+ const secret='AQ.not-a-real-secret';
+ const r=await llamarGemini(secret,'prueba',undefined,{fetchImpl:async()=>Response.json({
+  error:{message:secret,details:[{reason:'ACCESS_TOKEN_TYPE_UNSUPPORTED',metadata:{key:secret}}]}
+ },{status:401})});
+ assert.equal(r.ok,false);
+ assert.equal(r.providerStatus,401);
+ assert.equal(r.providerCode,'ACCESS_TOKEN_TYPE_UNSUPPORTED');
+ assert.equal(JSON.stringify(r).includes(secret),false);
+});
+
+test('reintenta una vez un 503 y recupera Gemini sin extender el timeout', async()=>{
+ let calls=0;
+ const r=await llamarGemini('test','hola',undefined,{fetchImpl:async()=>{
+  calls++;
+  return calls===1 ? new Response('',{status:503}) : Response.json(answer('OK'));
+ }});
+ assert.equal(calls,2);
+ assert.equal(r.ok,true);
+});
+test('no reintenta credenciales rechazadas ni cuota',async()=>{
+ for(const status of [401,403,429]){
+  let calls=0;
+  const r=await llamarGemini('test','hola',undefined,{fetchImpl:async()=>{
+   calls++;return new Response('',{status});
+  }});
+  assert.equal(calls,1);
+  assert.equal(r.ok,false);
+ }
 });

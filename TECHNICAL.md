@@ -49,3 +49,25 @@ Pruebas:
 - node --test backend/tests/gemini.test.js: pruebas aisladas sin API real.
 - npm --prefix backend test: ejecuta además la suite previa.
 - Se detectó una prueba previa fallida de creación de pedidos (400 frente a 201 esperado). Se reprodujo también contra backend/index.js de HEAD, sin el parche Gemini. Esa regresión preexistente queda fuera de este cambio.
+
+### Diagnóstico real posterior al despliegue
+Se comprobó que las solicitudes del chat en el Worker publicado reciben HTTP 401 de Google (authentication). La llamada directa con la clave local a generateContent recibió UNAUTHENTICATED / ACCESS_TOKEN_TYPE_UNSUPPORTED. La presencia del secreto GEMINI_API_KEY en Cloudflare está confirmada, pero su valor remoto no es legible ni se supone idéntico al local.
+La conexión no puede declararse funcional hasta obtener una respuesta real de Google. Actualizar código no vuelve válida una credencial rechazada. Se requiere probar una clave vigente antes de reemplazar el secreto publicado.
+El indicador pasa a IA LOCAL. Las respuestas de fallback incluyen códigos diagnósticos acotados (fallbackReason, providerStatus, providerCode), sin el mensaje externo, prompts ni secretos.
+
+### Validación con la clave reemplazada
+La nueva clave local recibió HTTP 200 y texto OK en una llamada real a Google. Se actualizó únicamente GEMINI_API_KEY en el Worker mediante entrada estándar, sin guardar el secreto en código.
+Una prueba posterior recibió HTTP 503 de Google, también observado en producción. Se incorporó un único reintento ante 502/503/504 dentro del timeout total de 12 segundos.
+La prueba integral del endpoint local de chat con contexto vacío y Google real terminó con HTTP 200, fallback: false y respuesta no vacía. Las 20 pruebas de Gemini pasan.
+El Worker se publicó como versión 622472b3-5eeb-4ae6-a83c-88f5f88ce20a. Falta la confirmación visual de una respuesta online en la sesión publicada del usuario tras esta última versión; no se equipara el éxito local con esa verificación.
+
+## Voz de ZetaBot
+El frontend incluye Dictar (SpeechRecognition/webkitSpeechRecognition, es-CL), Leer respuestas (opcional y desactivado al entrar), Escuchar última y Detener voz (SpeechSynthesis).
+El dictado rellena el borrador y requiere Enviar: no manda mensajes automáticamente. Se conserva el texto previo. La captura solo se inicia por clic del usuario; al enviar, navegar o abandonar la página se cancela la captura/lectura correspondiente.
+No se almacenan grabaciones en POLI ni se envía audio al Worker. El reconocimiento depende del servicio del navegador, que puede procesar audio remotamente y requerir internet. La disponibilidad del dictado y de las voces depende del navegador/dispositivo. Si falta soporte o permiso, permanece el chat escrito.
+Pruebas: node --test backend/tests/gemini.test.js backend/tests/voice.test.js (26 aprobadas). Eventos de voz simulados: no se ha validado acústicamente un micrófono ni la reproducción real en el equipo del usuario.
+
+### Conversación natural
+El chat envía los últimos turnos al backend y el prompt de Zetabot exige respuestas de 1 a 4 frases, tono cercano, sin listas ni IDs internos salvo que el usuario los solicite. El contexto de operaciones se presenta como referencia interna y no como reporte.
+La prueba real con Gemini respondió de forma natural y devolvió fallback: false.
+La lectura actual usa SpeechSynthesis del navegador. El canal Gemini Live es una WebSocket bidireccional con audio nativo y requiere una sesión efímera; la clave actual pudo crear un token temporal, pero esa integración de audio queda separada para no alterar el chat estable sin probar captura PCM, reproducción y reconexión en el navegador.

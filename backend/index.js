@@ -212,45 +212,6 @@ app.get('/api/v1/data/rutas', async (c) => {
   return c.json(results)
 })
 
-// Crear Operación (Solo User, Admin)
-app.post('/api/v1/data/operaciones', requireRole(['admin', 'user']), async (c) => {
-  try {
-    const body = await c.req.json()
-    const { id, pedido, destino, ventana, vehiculo, conductor, estado, avance } = body
-
-    if (!id || !pedido || !destino || !ventana) {
-      return c.json({ error: 'Faltan campos obligatorios: id, pedido, destino, ventana' }, 400)
-    }
-
-    // Buscar route_id asociado al vehiculo indicado (si existe)
-    let routeId = null
-    if (vehiculo) {
-      const routeResult = await c.env.DB.prepare(
-        `SELECT r.id FROM routes r WHERE r.vehicle_id = ? LIMIT 1`
-      ).bind(vehiculo).first()
-      if (routeResult) routeId = routeResult.id
-    }
-
-    // Insertar en la tabla orders
-    await c.env.DB.prepare(
-      `INSERT INTO orders (id, pedido, destino, ventana_horaria, route_id, estado, avance, fecha)
-       VALUES (?, ?, ?, ?, ?, ?, ?, date('now', 'localtime'))`
-    ).bind(
-      id,
-      pedido,
-      destino,
-      ventana,
-      routeId,
-      estado || 'A tiempo',
-      avance ?? 0
-    ).run()
-
-    return c.json({ message: 'Operación creada exitosamente', id }, 201)
-  } catch (err) {
-    console.error('Error creando operación:', err)
-    return c.json({ error: 'Error interno al crear la operación', detail: err.message }, 500)
-  }
-})
 
 // Crear Ruta (Solo User, Admin)
 app.post('/api/v1/data/rutas', requireRole(['admin', 'user']), async (c) => {
@@ -433,14 +394,11 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
     `).all();
 
     const apiKey = c.env.GEMINI_API_KEY;
-    if (!apiKey) return c.json({ recomendacion: generarRespuestaLocal(results), fallback: true });
+    if (!apiKey) return c.json({ recomendacion: generarRespuestaLocal(results), fallback: true, fallbackReason: "missing_key" });
 
-    const prompt = results.length === 0
-      ? "Eres Zetabot, asistente logístico de POLI. No hay pedidos registrados. Da una bienvenida cálida y ofrece ayuda. Markdown breve."
-      : `Eres Zetabot, asistente logístico de POLI. Operaciones recientes: ${results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ')}. Analiza brevemente, recomienda asignaciones y detecta riesgos. Markdown breve.`;
-
+    const prompt = results.length === 0 ? "Eres Zetabot, un asistente logístico cercano y breve. Da una bienvenida natural en español y ofrece ayuda." : "Eres Zetabot, un asistente logístico cercano. Resume lo más útil sobre estas operaciones en 1 a 3 frases, sin IDs, sin listas y sin sonar como un reporte: " + results.map(r => r.destino + " (" + r.estado + ")").join("; ");
     const r = await llamarGemini(apiKey, prompt, c.env.GEMINI_MODEL);
-    return c.json({ recomendacion: r.ok ? r.text : generarRespuestaLocal(results), fallback: !r.ok });
+    return c.json({ recomendacion: r.ok ? r.text : generarRespuestaLocal(results), fallback: !r.ok, ...(!r.ok ? { fallbackReason: r.reason, providerStatus: r.providerStatus, providerCode: r.providerCode } : {}) });
   } catch (err) {
     console.error("AI Error:", err);
     return c.json({ recomendacion: generarRespuestaLocal([]), fallback: true });
@@ -450,22 +408,26 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
 // Chat interactivo con ZetaBot
 app.post('/api/v1/data/ai/chat', async (c) => {
   try {
-    const { message } = await c.req.json();
+    const body = await c.req.json();
+    const { message } = body;
+    const history = Array.isArray(body.history)
+      ? body.history.filter(item => item && typeof item.role === 'string' && typeof item.text === 'string').slice(-6)
+          .map(item => (item.role === 'user' ? 'Usuario: ' : 'ZetaBot: ') + item.text.slice(0, 500)).join('\n')
+      : '';
     if (typeof message !== 'string' || !message.trim()) return c.json({ respuesta: 'Escribe un mensaje para continuar.', fallback: true });
 
     const apiKey = c.env.GEMINI_API_KEY;
     let ctx = "";
     try {
       const { results } = await c.env.DB.prepare(`SELECT p.id_pedido as id, u.direccion as destino, p.estado FROM Pedido p JOIN UbicacionCliente u ON p.id_ubicacion = u.id_ubicacion ORDER BY p.id_pedido DESC LIMIT 15`).all();
-      if (results.length > 0) ctx = "Operaciones en el sistema: " + results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ') + ". ";
+      if (results.length > 0) ctx = "Resumen operativo interno: " + results.map(r => "destino " + r.destino + ", estado " + r.estado).join("; ") + ". ";
     } catch(e) {}
 
-    const prompt = `Eres Zetabot, asistente logístico de POLI. ${ctx}Responde de forma profesional y concisa en Markdown breve.\n\nUsuario: ${message}`;
-
-    if (!apiKey) return c.json({ respuesta: responderLocal(message), fallback: true });
+    const prompt = "Eres Zetabot, el asistente conversacional de POLI. Hablas en español de Chile, con un tono humano, cercano, claro y animado. Responde como en un chat, en 1 a 4 frases. No uses listas, viñetas, tablas, códigos ni IDs internos salvo que el usuario los pida. No repitas el contexto ni describas tu proceso. " + ctx + (history ? "Conversación reciente:\n" + history + "\n" : "") + "Usuario: " + message;
+    if (!apiKey) return c.json({ respuesta: responderLocal(message), fallback: true, fallbackReason: "missing_key" });
 
     const r = await llamarGemini(apiKey, prompt, c.env.GEMINI_MODEL);
-    return c.json({ respuesta: r.ok ? r.text : responderLocal(message), fallback: !r.ok });
+    return c.json({ respuesta: r.ok ? r.text : responderLocal(message), fallback: !r.ok, ...(!r.ok ? { fallbackReason: r.reason, providerStatus: r.providerStatus, providerCode: r.providerCode } : {}) });
   } catch (err) {
     console.error("Chat Error:", err);
     return c.json({ respuesta: responderLocal("error"), fallback: true });

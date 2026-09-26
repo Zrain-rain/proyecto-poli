@@ -31,8 +31,15 @@ const renderInicio = () => {
                     <!-- Los mensajes del chat irán aquí -->
                 </div>
                 <div style="padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
-                    <input type="text" id="zetabot-chat-input" placeholder="Pregúntale a ZetaBot..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 13px;">
-                    <button id="zetabot-chat-btn" class="btn btn-primary" style="padding: 8px 12px;"><i class="ph-bold ph-paper-plane-right"></i></button>
+                    <input type="text" aria-label="Mensaje para ZetaBot" id="zetabot-chat-input" placeholder="Pregúntale a ZetaBot..." style="flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 13px;">
+                    <button type="button" aria-label="Enviar mensaje" id="zetabot-chat-btn" class="btn btn-primary" style="padding: 8px 12px;"><i class="ph-bold ph-paper-plane-right"></i></button>
+                </div>
+                <div style="padding: 0 12px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                    <button type="button" id="zetabot-mic" class="btn outline" aria-pressed="false" aria-describedby="zetabot-voice-status">🎤 Dictar</button>
+                    <label style="display:flex; gap:6px; align-items:center; font-size:13px;"><input type="checkbox" id="zetabot-voice-enabled"> Leer respuestas</label>
+                    <button type="button" id="zetabot-replay" class="btn outline" disabled>Escuchar última</button>
+                    <button type="button" id="zetabot-voice-stop" class="btn outline" disabled>Detener voz</button>
+                    <p id="zetabot-voice-status" role="status" aria-live="polite" style="width:100%; margin:0; font-size:12px; color:var(--text-muted);">Pulsa Dictar, revisa el texto y envíalo. El dictado puede requerir internet.</p>
                 </div>
             </div>
         </div>
@@ -95,6 +102,16 @@ const initInicio = async () => {
     const chatBtn = document.getElementById('zetabot-chat-btn');
 
     if (aiList && chatInput && chatBtn) {
+        const conversation = [];
+        window.zetabotVoice?.dispose();
+        const voice = window.createZetabotVoice?.({
+            input: chatInput, mic: document.getElementById("zetabot-mic"),
+            enabled: document.getElementById("zetabot-voice-enabled"),
+            replay: document.getElementById("zetabot-replay"),
+            stop: document.getElementById("zetabot-voice-stop"),
+            status: document.getElementById("zetabot-voice-status")
+        });
+        window.zetabotVoice = voice;
         // Función para agregar mensaje al chat
         const appendMessage = (sender, text, isHtml = false) => {
             const isBot = sender === 'ZetaBot';
@@ -116,6 +133,7 @@ const initInicio = async () => {
             msgDiv.innerHTML = isBot ? icon + contentHtml : contentHtml;
             aiList.appendChild(msgDiv);
             aiList.scrollTop = aiList.scrollHeight;
+            if (isBot) voice?.reply(text);
         };
 
         // Función de carga del bot
@@ -143,7 +161,7 @@ const initInicio = async () => {
             if (badge) {
                 if (isFallback) {
                     badge.className = 'badge-pill warning';
-                    badge.innerHTML = '<i class="ph-fill ph-hard-drives"></i> Respuestas locales';
+                    badge.innerHTML = '<i class="ph-fill ph-hard-drives"></i> IA LOCAL';
                 } else {
                     badge.className = 'badge-pill active';
                     badge.innerHTML = '<i class="ph-fill ph-sparkle"></i> IA Activa';
@@ -178,6 +196,8 @@ const initInicio = async () => {
             const msg = chatInput.value.trim();
             if (!msg || chatInput.disabled) return;
 
+            voice?.setBusy(true);
+            conversation.push({ role: 'user', text: msg });
             appendMessage('User', msg);
             chatInput.value = '';
             chatInput.disabled = true;
@@ -185,11 +205,12 @@ const initInicio = async () => {
 
             showTyping();
             try {
-                const response = await window.API.enviarMensajeZetabot(msg);
+                const response = await window.API.enviarMensajeZetabot(msg, conversation.slice(-7, -1));
                 removeTyping();
                 if (response) {
                     updateBadge(response.fallback);
                     if (response.respuesta) {
+                        conversation.push({ role: 'assistant', text: response.respuesta });
                         appendMessage('ZetaBot', response.respuesta);
                     } else {
                         appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
@@ -205,6 +226,7 @@ const initInicio = async () => {
                 appendMessage('ZetaBot', 'Ocurrió un error al intentar conectarme.');
             }
 
+            voice?.setBusy(false);
             chatInput.disabled = false;
             chatBtn.disabled = false;
             chatInput.focus();

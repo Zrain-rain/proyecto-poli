@@ -79,10 +79,10 @@ window.API = {
     getRutas: async () => await fetchAPI('/data/rutas'),
     getAlertas: async () => await fetchAPI('/data/alertas'),
     getAIRecomendaciones: async () => await fetchZetabot('/data/ai/recomendaciones', 'recomendacion'),
-    enviarMensajeZetabot: async (message) => {
+    enviarMensajeZetabot: async (message, history = []) => {
         return await fetchZetabot('/data/ai/chat', 'respuesta', message, {
             method: 'POST',
-            body: JSON.stringify({ message })
+            body: JSON.stringify({ message, history })
         });
     },
     getReportesOTIF: async () => await fetchAPI('/data/reportes/otif'),

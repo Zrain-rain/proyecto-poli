@@ -6,14 +6,27 @@ export class PoliServices {
     // 1. usp_POLI_CrearPedido -> Crear Pedido
     // ===============================================
     static async crearPedido(env, req, user) {
-        const { id_cliente, id_ubicacion, codigo_pedido, fecha_requerida, ventana_horaria, peso_total, volumen_total } = await req.json();
-        if (![peso_total, volumen_total].every(value => typeof value === "number" && Number.isFinite(value) && value > 0)) throw new Error("El peso y el volumen deben ser números mayores a 0.");
+        const payload = await req.json();
+        const { id_cliente, direccion, latitud, longitud, codigo_pedido, fecha_requerida, ventana_horaria, peso_total, volumen_total } = payload;
+        
+        if (![peso_total, volumen_total].every(value => typeof value === "number" && Number.isFinite(value) && value > 0)) {
+            throw new Error("El peso y el volumen deben ser números mayores a 0.");
+        }
 
         const ip = req.header('CF-Connecting-IP') || 'unknown';
+
+        // 1. Crear UbicacionCliente o verificar existente (simplificado a crear nueva siempre para este endpoint)
+        const qUbicacion = `INSERT INTO UbicacionCliente (id_cliente, direccion, latitud, longitud) 
+                            VALUES (?, ?, ?, ?) RETURNING id_ubicacion`;
+        const resultUbicacion = await env.DB.prepare(qUbicacion).bind(id_cliente || 1, direccion, latitud, longitud).first();
+        if (!resultUbicacion) throw new Error("No se pudo crear la ubicación del cliente.");
+        const id_ubicacion = resultUbicacion.id_ubicacion;
+
+        // 2. Crear Pedido
         const qInsert = `INSERT INTO Pedido (id_cliente, id_ubicacion, codigo_pedido, fecha_requerida, ventana_horaria, peso_total, volumen_total, estado) 
                          VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDIENTE') RETURNING id_pedido`;
         
-        const resultInsert = await env.DB.prepare(qInsert).bind(id_cliente, id_ubicacion, codigo_pedido, fecha_requerida, ventana_horaria, peso_total, volumen_total).first();
+        const resultInsert = await env.DB.prepare(qInsert).bind(id_cliente || 1, id_ubicacion, codigo_pedido, fecha_requerida, ventana_horaria, peso_total, volumen_total).first();
         if (!resultInsert) throw new Error("No se pudo crear el pedido.");
         
         const id_pedido = resultInsert.id_pedido;

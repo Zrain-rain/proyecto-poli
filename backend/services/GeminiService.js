@@ -14,7 +14,7 @@ export async function llamarGemini(apiKey, inputText, model = 'gemini-flash-late
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(
+    const request = () => fetchImpl(
       'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
       {
         method: 'POST',
@@ -23,13 +23,26 @@ export async function llamarGemini(apiKey, inputText, model = 'gemini-flash-late
         signal: controller.signal
       }
     );
+    let response = await request();
+    // Un reintento para indisponibilidad temporal; comparte el timeout total.
+    if ([502, 503, 504].includes(response.status)) {
+      await response.body?.cancel();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      response = await request();
+    }
     if (!response.ok) {
       const reason = response.status === 429 ? 'quota'
         : [401, 403].includes(response.status) ? 'authentication'
         : response.status === 404 ? 'model_unavailable' : 'provider_error';
-      // No registrar cuerpos/URLs de errores externos: pueden contener datos sensibles.
-      console.warn('Gemini no disponible', { status: response.status, reason });
-      return { text: null, ok: false, reason };
+      // Extraer solo códigos conocidos, nunca claves, prompts ni el cuerpo del proveedor.
+      let providerCode;
+      try {
+        const data = await response.json();
+        const knownCodes = new Set(["ACCESS_TOKEN_TYPE_UNSUPPORTED", "API_KEY_INVALID", "API_KEY_EXPIRED", "API_KEY_SERVICE_BLOCKED", "SERVICE_DISABLED", "BILLING_DISABLED"]);
+        providerCode = data.error?.details?.map(detail => detail.reason).find(code => knownCodes.has(code));
+      } catch { /* El proveedor puede responder HTML o texto. */ }
+      console.warn('Gemini no disponible', { status: response.status, reason, providerCode });
+      return { text: null, ok: false, reason, providerStatus: response.status, ...(providerCode ? { providerCode } : {}) };
     }
     const data = await response.json();
     if (data.error) return { text: null, ok: false, reason: 'provider_error' };
