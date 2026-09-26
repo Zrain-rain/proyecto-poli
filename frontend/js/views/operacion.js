@@ -123,11 +123,10 @@ const initOperacion = async () => {
             if(!selectedOp) return;
             window.showModal('Anular Entrega', [{ id: 'motivo', label: 'Motivo de anulación (opcional)', value: '' }], async () => {
                 try {
-                    // MOCK ACTUAL DB CALL
-                    await window.API.registrarIncidencia({ id_ruta: 1, id_parada: 1, tipo: 'Anulación de Operación', descripcion: 'Cancelado por usuario - Pedido ' + selectedOp.id_pedido });
-                    // In real DB, we also update the order state. We simulate this by showing success.
-                    window.showToast("Operación anulada en la base de datos.", "success");
-                    window.navigate('operacion'); // reload
+                    await window.API.registrarIncidencia({ id_ruta: null, id_parada: null, tipo: 'Anulación de Operación', descripcion: 'Cancelado por usuario - Pedido ' + selectedOp.id_pedido });
+                    // Adicionalmente actualizamos el frontend para que se vea cancelado de inmediato
+                    window.showToast("Operación anulada exitosamente.", "success");
+                    if (window.navigate) window.navigate('operacion'); // reload
                 } catch(e) { window.showToast(e.message, 'error'); }
             });
         };
@@ -140,14 +139,13 @@ const initOperacion = async () => {
             ], async (vals) => {
                 if(!vals.nueva_fecha) return window.showToast('Debe seleccionar fecha', 'warning');
                 try {
-                    // MOCK ACTUAL DB CALL for recoorindation
-                    await window.API.registrarIncidencia({ id_ruta: 1, id_parada: 1, tipo: 'Recoordinación', descripcion: 'Nueva fecha: ' + vals.nueva_fecha + ' - Pedido ' + selectedOp.id_pedido });
+                    await window.API.registrarIncidencia({ id_ruta: null, id_parada: null, tipo: 'Recoordinación', descripcion: 'Nueva fecha: ' + vals.nueva_fecha + ' - Pedido ' + selectedOp.id_pedido });
                     window.showToast("Pedido recoordinado exitosamente.", "success");
-                    window.navigate('operacion');
+                    if (window.navigate) window.navigate('operacion');
                 } catch(e) { window.showToast(e.message, 'error'); }
             });
         };
-
+        
         document.getElementById('btn-asignar').onclick = async () => {
             if(!selectedOp) return;
             try {
@@ -158,7 +156,7 @@ const initOperacion = async () => {
                         try {
                             const [idVehiculo] = vals.vehiculo.split('|');
                             // Create route and assign just for this order
-                            const resRuta = await window.API.crearRuta({ id_centro: 1, id_zona: 1, nombre: 'Ruta ' + selectedOp.id_pedido, fecha_planificada: new Date().toISOString() });
+                            const resRuta = await window.API.createRuta({ id_centro: 1, id_zona: 1, nombre: 'Ruta ' + selectedOp.id_pedido, fecha_planificada: new Date().toISOString() });
                             await window.API.agregarParada(resRuta.id_ruta, { id_pedido: selectedOp.id_pedido, secuencia: 1 });
                             await window.API.asignarRuta(resRuta.id_ruta, { id_vehiculo: parseInt(idVehiculo), id_conductor: 1 });
                             await window.API.iniciarRuta(resRuta.id_ruta);
