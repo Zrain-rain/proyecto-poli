@@ -25,7 +25,7 @@ const renderInicio = () => {
             <div class="card" style="display: flex; flex-direction: column;">
                 <div class="card-header">
                     <h3 class="card-title">ZetaBot</h3>
-                    <div class="badge-pill active"><i class="ph-fill ph-sparkle"></i> IA Activa</div>
+                    <div id="zetabot-badge" class="badge-pill active"><i class="ph-fill ph-sparkle"></i> IA Activa</div>
                 </div>
                 <div class="ai-list" id="ai-recommendations-list" style="overflow-y: auto; max-height: 250px; flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 12px;">
                     <!-- Los mensajes del chat irán aquí -->
@@ -215,17 +215,38 @@ const initInicio = async () => {
             if (typing) typing.remove();
         };
 
+        // Actualizar Badge IA
+        const updateBadge = (isFallback) => {
+            const badge = document.getElementById('zetabot-badge');
+            if (badge) {
+                if (isFallback) {
+                    badge.className = 'badge-pill warning';
+                    badge.innerHTML = '<i class="ph-fill ph-hard-drives"></i> IA Local';
+                } else {
+                    badge.className = 'badge-pill active';
+                    badge.innerHTML = '<i class="ph-fill ph-sparkle"></i> IA Activa';
+                }
+            }
+        };
+
         // Carga Inicial
         showTyping();
         window.API.getAIRecomendaciones().then(aiData => {
             removeTyping();
-            if (aiData && aiData.recomendacion) {
-                appendMessage('ZetaBot', aiData.recomendacion);
+            if (aiData) {
+                updateBadge(aiData.fallback);
+                if (aiData.recomendacion) {
+                    appendMessage('ZetaBot', aiData.recomendacion);
+                } else {
+                    appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte.');
+                }
             } else {
-                appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte con las operaciones de hoy.');
+                updateBadge(true);
+                appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte.');
             }
         }).catch(e => {
             removeTyping();
+            updateBadge(true);
             console.error("Error ZetaBot:", e);
             appendMessage('ZetaBot', 'Estoy experimentando problemas de conexión, pero el sistema POLI funciona normalmente.');
         });
@@ -244,13 +265,20 @@ const initInicio = async () => {
             try {
                 const response = await window.API.enviarMensajeZetabot(msg);
                 removeTyping();
-                if (response && response.respuesta) {
-                    appendMessage('ZetaBot', response.respuesta);
+                if (response) {
+                    updateBadge(response.fallback);
+                    if (response.respuesta) {
+                        appendMessage('ZetaBot', response.respuesta);
+                    } else {
+                        appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
+                    }
                 } else {
+                    updateBadge(true);
                     appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
                 }
             } catch (error) {
                 removeTyping();
+                updateBadge(true);
                 console.error(error);
                 appendMessage('ZetaBot', 'Ocurrió un error al intentar conectarme.');
             }

@@ -462,15 +462,15 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
     const { results } = await c.env.DB.prepare(`
       SELECT p.id_pedido as id, u.direccion as destino, p.estado, p.ventana_horaria
       FROM Pedido p JOIN UbicacionCliente u ON p.id_ubicacion = u.id_ubicacion
-      WHERE p.fecha_requerida = date('now', 'localtime')
+      ORDER BY p.id_pedido DESC LIMIT 20
     `).all();
 
     const apiKey = c.env.GEMINI_API_KEY;
     if (!apiKey) return c.json({ recomendacion: generarRespuestaLocal(results), fallback: true });
 
     const prompt = results.length === 0
-      ? "Eres Zetabot, asistente logístico de POLI. No hay pedidos hoy. Da una bienvenida cálida y ofrece ayuda. Markdown breve."
-      : `Eres Zetabot, asistente logístico de POLI. Operaciones: ${results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ')}. Analiza brevemente, recomienda asignaciones y detecta riesgos. Markdown breve.`;
+      ? "Eres Zetabot, asistente logístico de POLI. No hay pedidos registrados. Da una bienvenida cálida y ofrece ayuda. Markdown breve."
+      : `Eres Zetabot, asistente logístico de POLI. Operaciones recientes: ${results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ')}. Analiza brevemente, recomienda asignaciones y detecta riesgos. Markdown breve.`;
 
     const r = await llamarGemini(apiKey, prompt);
     return c.json({ recomendacion: r.ok ? r.text : generarRespuestaLocal(results), fallback: !r.ok });
