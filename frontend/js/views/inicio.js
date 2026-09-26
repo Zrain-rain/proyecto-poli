@@ -25,7 +25,7 @@ const renderInicio = () => {
             <div class="card" style="display: flex; flex-direction: column;">
                 <div class="card-header">
                     <h3 class="card-title">ZetaBot</h3>
-                    <div id="zetabot-badge" class="badge-pill active"><i class="ph-fill ph-sparkle"></i> IA Activa</div>
+                    <div id="zetabot-badge" class="badge-pill outline">Conectando...</div>
                 </div>
                 <div class="ai-list" id="ai-recommendations-list" style="overflow-y: auto; max-height: 250px; flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 12px;">
                     <!-- Los mensajes del chat irán aquí -->
@@ -79,7 +79,7 @@ const renderInicio = () => {
 };
 
 const initInicio = async () => {
-    
+
     // Función auxiliar para renderizar tendencia
     const renderTrend = (tendencia, tendenciaPositiva, textoTendencia) => {
         const icon = tendenciaPositiva ? 'ph-caret-up' : 'ph-caret-down';
@@ -88,6 +88,133 @@ const initInicio = async () => {
     };
 
     let operacionesDelDia = [];
+
+    // 4. ZetaBot — Chat e Inicialización
+    const aiList = document.getElementById('ai-recommendations-list');
+    const chatInput = document.getElementById('zetabot-chat-input');
+    const chatBtn = document.getElementById('zetabot-chat-btn');
+
+    if (aiList && chatInput && chatBtn) {
+        // Función para agregar mensaje al chat
+        const appendMessage = (sender, text, isHtml = false) => {
+            const isBot = sender === 'ZetaBot';
+            const bgClass = isBot ? 'bg-primary-light' : 'bg-gray-100';
+            const align = isBot ? 'flex-start' : 'flex-end';
+            const icon = isBot ? '<div class="ai-icon blue" style="min-width: 24px; height: 24px;"><i class="ph-fill ph-robot"></i></div>' : '';
+
+            // Format text (convert markdown bold to strong and newlines to br if not already HTML)
+            const escapedText = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            let formattedText = isHtml ? text : escapedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            // Remove the "**Zetabot:**" prefix if it comes from backend
+            if (isBot) formattedText = formattedText.replace(/<strong>Zetabot:<\/strong><br>/gi, '').replace(/<strong>Zetabot:<\/strong>/gi, '');
+
+            const msgDiv = document.createElement('div');
+            msgDiv.style.cssText = `display: flex; gap: 8px; align-self: ${align}; max-width: 90%;`;
+
+            let contentHtml = `<div style="background: ${isBot ? '#e8f0fe' : '#f1f3f4'}; padding: 10px 14px; border-radius: 12px; font-size: 13px; color: var(--text-main); line-height: 1.5; border-bottom-${isBot ? 'left' : 'right'}-radius: 2px;">${formattedText}</div>`;
+
+            msgDiv.innerHTML = isBot ? icon + contentHtml : contentHtml;
+            aiList.appendChild(msgDiv);
+            aiList.scrollTop = aiList.scrollHeight;
+        };
+
+        // Función de carga del bot
+        const showTyping = () => {
+            const msgDiv = document.createElement('div');
+            msgDiv.id = 'zetabot-typing';
+            msgDiv.style.cssText = `display: flex; gap: 8px; align-self: flex-start;`;
+            msgDiv.innerHTML = `
+                <div class="ai-icon blue" style="min-width: 24px; height: 24px;"><i class="ph-fill ph-robot"></i></div>
+                <div style="background: #e8f0fe; padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px;">
+                    <i class="ph ph-dots-three" style="animation: pulse 1.5s infinite; font-size: 18px;"></i>
+                </div>
+            `;
+            aiList.appendChild(msgDiv);
+            aiList.scrollTop = aiList.scrollHeight;
+        };
+        const removeTyping = () => {
+            const typing = document.getElementById('zetabot-typing');
+            if (typing) typing.remove();
+        };
+
+        // Actualizar Badge IA
+        const updateBadge = (isFallback) => {
+            const badge = document.getElementById('zetabot-badge');
+            if (badge) {
+                if (isFallback) {
+                    badge.className = 'badge-pill warning';
+                    badge.innerHTML = '<i class="ph-fill ph-hard-drives"></i> Respuestas locales';
+                } else {
+                    badge.className = 'badge-pill active';
+                    badge.innerHTML = '<i class="ph-fill ph-sparkle"></i> IA Activa';
+                }
+            }
+        };
+
+        // Carga Inicial
+        showTyping();
+        window.API.getAIRecomendaciones().then(aiData => {
+            removeTyping();
+            if (aiData) {
+                updateBadge(aiData.fallback);
+                if (aiData.recomendacion) {
+                    appendMessage('ZetaBot', aiData.recomendacion);
+                } else {
+                    appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte.');
+                }
+            } else {
+                updateBadge(true);
+                appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte.');
+            }
+        }).catch(e => {
+            removeTyping();
+            updateBadge(true);
+            console.error("Error ZetaBot:", e);
+            appendMessage('ZetaBot', 'Estoy experimentando problemas de conexión, pero el sistema POLI funciona normalmente.');
+        });
+
+        // Interacción del usuario
+        const handleSend = async () => {
+            const msg = chatInput.value.trim();
+            if (!msg || chatInput.disabled) return;
+
+            appendMessage('User', msg);
+            chatInput.value = '';
+            chatInput.disabled = true;
+            chatBtn.disabled = true;
+
+            showTyping();
+            try {
+                const response = await window.API.enviarMensajeZetabot(msg);
+                removeTyping();
+                if (response) {
+                    updateBadge(response.fallback);
+                    if (response.respuesta) {
+                        appendMessage('ZetaBot', response.respuesta);
+                    } else {
+                        appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
+                    }
+                } else {
+                    updateBadge(true);
+                    appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
+                }
+            } catch (error) {
+                removeTyping();
+                updateBadge(true);
+                console.error(error);
+                appendMessage('ZetaBot', 'Ocurrió un error al intentar conectarme.');
+            }
+
+            chatInput.disabled = false;
+            chatBtn.disabled = false;
+            chatInput.focus();
+        };
+
+        chatBtn.addEventListener('click', handleSend);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSend();
+        });
+    }
 
     // 1. Cargar KPIs desde API
     try {
@@ -153,7 +280,7 @@ const initInicio = async () => {
                 if(op.estado === 'En riesgo' || op.estado === 'EN_RIESGO') statusClass = 'risk';
                 if(op.estado === 'Con retraso' || op.estado === 'Retrasada' || op.estado === 'ATRASADO') statusClass = 'delayed';
                 if(op.estado === 'PENDIENTE') statusClass = 'outline';
-                
+
                 return `
                     <tr style="cursor: pointer;" onclick="window.navigate('operacion')">
                         <td style="color: var(--primary); font-weight: 600;">${op.pedido || op.id}</td>
@@ -168,139 +295,13 @@ const initInicio = async () => {
         console.error("Error al cargar operaciones", e);
     }
 
-    // 4. ZetaBot — Chat e Inicialización
-    const aiList = document.getElementById('ai-recommendations-list');
-    const chatInput = document.getElementById('zetabot-chat-input');
-    const chatBtn = document.getElementById('zetabot-chat-btn');
-
-    if (aiList && chatInput && chatBtn) {
-        // Función para agregar mensaje al chat
-        const appendMessage = (sender, text, isHtml = false) => {
-            const isBot = sender === 'ZetaBot';
-            const bgClass = isBot ? 'bg-primary-light' : 'bg-gray-100';
-            const align = isBot ? 'flex-start' : 'flex-end';
-            const icon = isBot ? '<div class="ai-icon blue" style="min-width: 24px; height: 24px;"><i class="ph-fill ph-robot"></i></div>' : '';
-            
-            // Format text (convert markdown bold to strong and newlines to br if not already HTML)
-            let formattedText = isHtml ? text : text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-            // Remove the "**Zetabot:**" prefix if it comes from backend
-            if (isBot) formattedText = formattedText.replace(/<strong>Zetabot:<\/strong><br>/gi, '').replace(/<strong>Zetabot:<\/strong>/gi, '');
-
-            const msgDiv = document.createElement('div');
-            msgDiv.style.cssText = `display: flex; gap: 8px; align-self: ${align}; max-width: 90%;`;
-            
-            let contentHtml = `<div style="background: ${isBot ? '#e8f0fe' : '#f1f3f4'}; padding: 10px 14px; border-radius: 12px; font-size: 13px; color: var(--text-main); line-height: 1.5; border-bottom-${isBot ? 'left' : 'right'}-radius: 2px;">${formattedText}</div>`;
-            
-            msgDiv.innerHTML = isBot ? icon + contentHtml : contentHtml;
-            aiList.appendChild(msgDiv);
-            aiList.scrollTop = aiList.scrollHeight;
-        };
-
-        // Función de carga del bot
-        const showTyping = () => {
-            const msgDiv = document.createElement('div');
-            msgDiv.id = 'zetabot-typing';
-            msgDiv.style.cssText = `display: flex; gap: 8px; align-self: flex-start;`;
-            msgDiv.innerHTML = `
-                <div class="ai-icon blue" style="min-width: 24px; height: 24px;"><i class="ph-fill ph-robot"></i></div>
-                <div style="background: #e8f0fe; padding: 10px 14px; border-radius: 12px; border-bottom-left-radius: 2px;">
-                    <i class="ph ph-dots-three" style="animation: pulse 1.5s infinite; font-size: 18px;"></i>
-                </div>
-            `;
-            aiList.appendChild(msgDiv);
-            aiList.scrollTop = aiList.scrollHeight;
-        };
-        const removeTyping = () => {
-            const typing = document.getElementById('zetabot-typing');
-            if (typing) typing.remove();
-        };
-
-        // Actualizar Badge IA
-        const updateBadge = (isFallback) => {
-            const badge = document.getElementById('zetabot-badge');
-            if (badge) {
-                if (isFallback) {
-                    badge.className = 'badge-pill warning';
-                    badge.innerHTML = '<i class="ph-fill ph-hard-drives"></i> IA Local';
-                } else {
-                    badge.className = 'badge-pill active';
-                    badge.innerHTML = '<i class="ph-fill ph-sparkle"></i> IA Activa';
-                }
-            }
-        };
-
-        // Carga Inicial
-        showTyping();
-        window.API.getAIRecomendaciones().then(aiData => {
-            removeTyping();
-            if (aiData) {
-                updateBadge(aiData.fallback);
-                if (aiData.recomendacion) {
-                    appendMessage('ZetaBot', aiData.recomendacion);
-                } else {
-                    appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte.');
-                }
-            } else {
-                updateBadge(true);
-                appendMessage('ZetaBot', '¡Hola! Estoy listo para ayudarte.');
-            }
-        }).catch(e => {
-            removeTyping();
-            updateBadge(true);
-            console.error("Error ZetaBot:", e);
-            appendMessage('ZetaBot', 'Estoy experimentando problemas de conexión, pero el sistema POLI funciona normalmente.');
-        });
-
-        // Interacción del usuario
-        const handleSend = async () => {
-            const msg = chatInput.value.trim();
-            if (!msg) return;
-            
-            appendMessage('User', msg);
-            chatInput.value = '';
-            chatInput.disabled = true;
-            chatBtn.disabled = true;
-            
-            showTyping();
-            try {
-                const response = await window.API.enviarMensajeZetabot(msg);
-                removeTyping();
-                if (response) {
-                    updateBadge(response.fallback);
-                    if (response.respuesta) {
-                        appendMessage('ZetaBot', response.respuesta);
-                    } else {
-                        appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
-                    }
-                } else {
-                    updateBadge(true);
-                    appendMessage('ZetaBot', 'Lo siento, no pude procesar eso.');
-                }
-            } catch (error) {
-                removeTyping();
-                updateBadge(true);
-                console.error(error);
-                appendMessage('ZetaBot', 'Ocurrió un error al intentar conectarme.');
-            }
-            
-            chatInput.disabled = false;
-            chatBtn.disabled = false;
-            chatInput.focus();
-        };
-
-        chatBtn.addEventListener('click', handleSend);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleSend();
-        });
-    }
-
     // 3. Init Chart.js (Dinámico basado en operaciones)
     const ctx = document.getElementById('entregasChart');
     if (ctx && operacionesDelDia.length > 0) {
         // Agrupar por ventana horaria
         const ventanasSet = new Set(operacionesDelDia.map(op => op.ventana || op.ventana_horaria).filter(Boolean));
         const labels = Array.from(ventanasSet).sort();
-        
+
         const dataProgramadas = labels.map(v => operacionesDelDia.filter(op => (op.ventana === v || op.ventana_horaria === v)).length);
         const dataCompletadas = labels.map(v => operacionesDelDia.filter(op => (op.ventana === v || op.ventana_horaria === v) && (op.estado === 'Entregada' || op.estado === 'A tiempo')).length);
 
@@ -344,7 +345,7 @@ const initInicio = async () => {
     if (mapEl) {
         window.API.getConfig().then(config => {
             if(!config.mapsApiKey) return;
-            
+
             window.initGoogleMap = () => {
                 const baseLocation = "Camino las flores 1008, Lampa, Chile";
                 const baseLatLng = { lat: -33.284, lng: -70.875 }; // Lampa aprox
@@ -361,7 +362,7 @@ const initInicio = async () => {
                 trafficLayer.setMap(map);
 
                 const bounds = new google.maps.LatLngBounds();
-                
+
                 // Marcador permanente de la Base
                 const baseMarker = new google.maps.Marker({
                     position: baseLatLng,
@@ -379,10 +380,10 @@ const initInicio = async () => {
                 bounds.extend(baseMarker.getPosition());
 
                 const directionsService = new google.maps.DirectionsService();
-                
+
                 // Extraer destinos únicos de hoy para trazar rutas
                 const destinos = operacionesDelDia.slice(0, 3).map(op => op.destino);
-                
+
                 destinos.forEach((destino, index) => {
                     const directionsRenderer = new google.maps.DirectionsRenderer({
                         map: map,
@@ -402,7 +403,7 @@ const initInicio = async () => {
                     }, (response, status) => {
                         if (status === 'OK') {
                             directionsRenderer.setDirections(response);
-                            
+
                             // Ajustar los límites (zoom) del mapa y poner marcador de destino
                             const route = response.routes[0];
                             if (route && route.legs && route.legs[0]) {

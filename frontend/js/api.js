@@ -1,12 +1,12 @@
 // URL base de la API (Worker Desplegado o Local)
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:8787/api/v1' 
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8787/api/v1'
     : 'https://poli-worker.zebba-leniz.workers.dev/api/v1';
 
 // Función genérica para hacer peticiones a la API
 async function fetchAPI(endpoint, options = {}) {
     const token = localStorage.getItem('poli_jwt');
-    
+
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers
@@ -27,18 +27,39 @@ async function fetchAPI(endpoint, options = {}) {
             localStorage.removeItem('poli_role');
             localStorage.removeItem('poli_user');
             window.location.href = 'login.html';
-            throw new Error('No autorizado');
+            throw Object.assign(new Error('No autorizado'), { status: 401 });
         }
 
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || 'Error en la petición');
+            throw Object.assign(new Error(data.error || 'Error en la petición'), { status: response.status });
         }
         return data;
     } catch (error) {
         console.error('Error en fetchAPI:', error);
         throw error;
     }
+}
+
+function respuestaZetabotLocal(message = "") {
+    const text = String(message).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (text.includes("ruta")) return "Modo local: consulta Rutas para revisar recorridos y asignaciones. No puedo consultar información actualizada sin conexión.";
+    if (/pedido|entrega|operacion/.test(text)) return "Modo local: consulta Operaciones para revisar pedidos y entregas. Para guardar cambios necesitas conexión con el servidor.";
+    if (/vehiculo|camion|flota/.test(text)) return "Modo local: consulta Gestión de Camiones o Vehículos. La disponibilidad actual requiere conexión.";
+    return "¡Hola! Estoy en modo local con respuestas predefinidas. Puedo orientarte sobre rutas, pedidos y vehículos. Volveré a intentar conectar con Gemini en tu próxima consulta.";
+}
+
+async function fetchZetabot(endpoint, field, message = "", options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+        const data = await fetchAPI(endpoint, { ...options, signal: controller.signal });
+        if (typeof data?.[field] !== "string" || !data[field].trim()) throw new Error("Respuesta vacía");
+        return data;
+    } catch (error) {
+        if (error.status === 401 || error.status === 403) throw error;
+        return { [field]: respuestaZetabotLocal(message), fallback: true };
+    } finally { clearTimeout(timer); }
 }
 
 // Exportamos las funciones específicas de negocio
@@ -57,9 +78,9 @@ window.API = {
     getOperaciones: async () => await fetchAPI('/data/operaciones'),
     getRutas: async () => await fetchAPI('/data/rutas'),
     getAlertas: async () => await fetchAPI('/data/alertas'),
-    getAIRecomendaciones: async () => await fetchAPI('/data/ai/recomendaciones'),
+    getAIRecomendaciones: async () => await fetchZetabot('/data/ai/recomendaciones', 'recomendacion'),
     enviarMensajeZetabot: async (message) => {
-        return await fetchAPI('/data/ai/chat', {
+        return await fetchZetabot('/data/ai/chat', 'respuesta', message, {
             method: 'POST',
             body: JSON.stringify({ message })
         });
@@ -119,7 +140,7 @@ window.API = {
     cerrarRuta: async (id_ruta) => {
         return fetchAPI(`/data/rutas/${id_ruta}/cierre`, { method: 'PUT' });
     },
-    
+
     // Alias para compatibilidad con código de remote (GitHub)
     createOperacion: async (operacionData) => {
         return await fetchAPI('/data/operaciones', {
@@ -154,7 +175,7 @@ window.API = {
 
     // 9. Disponibilidad Recursos
     getFlota: async () => {
-        // Retornamos mock de flota o consultamos un endpoint si existe. 
+        // Retornamos mock de flota o consultamos un endpoint si existe.
         // El endpoint de flota en backend no lo modificamos hoy, pero lo requeriría.
         return await fetchAPI('/data/flota').catch(() => []); // Fallback silencioso si no existe /flota real
     },

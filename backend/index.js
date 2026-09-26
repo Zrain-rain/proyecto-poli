@@ -1,3 +1,4 @@
+import { llamarGemini } from './services/GeminiService.js';
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
@@ -420,42 +421,8 @@ app.get('/api/v1/data/reportes/costos', requireRole(['admin']), async (c) => {
 })
 
 // ==========================================
-// NUEVOS ENDPOINTS: IA (Gemini Interactions API)
+// NUEVOS ENDPOINTS: IA (Gemini generateContent)
 // ==========================================
-
-async function llamarGemini(apiKey, inputText) {
-  // Intento 1: Interactions API (nuevo formato REST)
-  try {
-    const resp1 = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ model: 'models/gemini-2.0-flash', input: [{ type: 'text', text: inputText }] })
-    });
-    const d1 = await resp1.json();
-    if (!d1.error) {
-      const t = d1.output_text || d1.steps?.find(s => s.type === 'model_output')?.content?.find(c => c.type === 'text')?.text;
-      if (t) return { text: t, ok: true };
-    }
-    console.error('Interactions API:', d1.error?.message || JSON.stringify(d1).substring(0, 200));
-  } catch (e) { console.error('Interactions fetch:', e.message); }
-
-  // Intento 2: generateContent clásico
-  try {
-    const resp2 = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({ contents: [{ parts: [{ text: inputText }] }] })
-    });
-    const d2 = await resp2.json();
-    if (!d2.error) {
-      const t2 = d2.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (t2) return { text: t2, ok: true };
-    }
-    console.error('generateContent:', d2.error?.message || JSON.stringify(d2).substring(0, 200));
-  } catch (e) { console.error('generateContent fetch:', e.message); }
-
-  return { text: null, ok: false };
-}
 
 app.get('/api/v1/data/ai/recomendaciones', async (c) => {
   try {
@@ -472,7 +439,7 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
       ? "Eres Zetabot, asistente logístico de POLI. No hay pedidos registrados. Da una bienvenida cálida y ofrece ayuda. Markdown breve."
       : `Eres Zetabot, asistente logístico de POLI. Operaciones recientes: ${results.map(r => `[#${r.id}] ${r.destino} (${r.estado})`).join(', ')}. Analiza brevemente, recomienda asignaciones y detecta riesgos. Markdown breve.`;
 
-    const r = await llamarGemini(apiKey, prompt);
+    const r = await llamarGemini(apiKey, prompt, c.env.GEMINI_MODEL);
     return c.json({ recomendacion: r.ok ? r.text : generarRespuestaLocal(results), fallback: !r.ok });
   } catch (err) {
     console.error("AI Error:", err);
@@ -484,7 +451,7 @@ app.get('/api/v1/data/ai/recomendaciones', async (c) => {
 app.post('/api/v1/data/ai/chat', async (c) => {
   try {
     const { message } = await c.req.json();
-    if (!message) return c.json({ respuesta: 'Escribe un mensaje para continuar.' });
+    if (typeof message !== 'string' || !message.trim()) return c.json({ respuesta: 'Escribe un mensaje para continuar.', fallback: true });
 
     const apiKey = c.env.GEMINI_API_KEY;
     let ctx = "";
@@ -495,13 +462,13 @@ app.post('/api/v1/data/ai/chat', async (c) => {
 
     const prompt = `Eres Zetabot, asistente logístico de POLI. ${ctx}Responde de forma profesional y concisa en Markdown breve.\n\nUsuario: ${message}`;
 
-    if (!apiKey) return c.json({ respuesta: responderLocal(message) });
+    if (!apiKey) return c.json({ respuesta: responderLocal(message), fallback: true });
 
-    const r = await llamarGemini(apiKey, prompt);
+    const r = await llamarGemini(apiKey, prompt, c.env.GEMINI_MODEL);
     return c.json({ respuesta: r.ok ? r.text : responderLocal(message), fallback: !r.ok });
   } catch (err) {
     console.error("Chat Error:", err);
-    return c.json({ respuesta: responderLocal("error") });
+    return c.json({ respuesta: responderLocal("error"), fallback: true });
   }
 })
 
@@ -517,18 +484,18 @@ function responderLocal(msg) {
     return "**Zetabot:** La gestión de vehículos está en **Gestión de Camiones** y **Vehículos** en el menú lateral.";
   if (m.includes('ayuda') || m.includes('help'))
     return "**Zetabot:** Puedo ayudarte con:\n- **Operaciones** y entregas\n- **Rutas** y optimización\n- **Vehículos** y flota\n\nPregúntame lo que necesites.";
-  return "**Zetabot:** Gracias por tu consulta. Estoy en modo local por el momento, pero el sistema POLI funciona normalmente. ¿Necesitas ayuda con operaciones, rutas o flota?";
+  return "**Zetabot:** Gracias por tu consulta. Estoy en modo local por el momento, puedo orientarte sobre el uso de POLI. ¿Necesitas ayuda con operaciones, rutas o flota?";
 }
 
 function generarRespuestaLocal(ops) {
   if (!ops || ops.length === 0)
-    return "**Zetabot:** ¡Hola! No hay pedidos para hoy. Crea uno desde Operaciones para empezar. ¿En qué te ayudo?";
+    return "**Zetabot:** ¡Hola! No hay pedidos registrados. Crea uno desde Operaciones para empezar. ¿En qué te ayudo?";
   const p = ops.filter(o => o.estado === 'PENDIENTE').length;
   const r = ops.filter(o => o.estado === 'EN_RIESGO' || o.estado === 'En riesgo').length;
   let txt = "**Zetabot:** Revisé tus operaciones:\n";
   if (p > 0) txt += `- **${p} pendiente(s)** — asigna transporte.\n`;
   if (r > 0) txt += `- **${r} en riesgo** — revisa reasignación.\n`;
-  if (p === 0 && r === 0) txt += `- Todo fluye bien (${ops.length} ops). ¡Buen trabajo!\n`;
+  if (p === 0 && r === 0) txt += `- Sin pendientes ni estados de riesgo identificados en esta muestra (${ops.length} ops). ¡Buen trabajo!\n`;
   txt += "\n¿Alguna consulta?";
   return txt;
 }
